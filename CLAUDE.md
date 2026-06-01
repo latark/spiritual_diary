@@ -209,7 +209,7 @@ Telegram-алерт куратору при флаге. Эту логику **н
 ## 9. Текущий статус (обновлять в конце сессии)
 
 **Дата:** июнь 2026
-**Фаза:** ФАЗА 1 (Foundation) — кодовая часть закрыта. Сборка/typecheck/lint зелёные, прод-сервер отдаёт security-заголовки и CSP с nonce.
+**Фаза:** ФАЗА 2 (Auth + ЛК) — в работе. Фаза 1 закрыта. Supabase EU подключён, миграция profiles + RLS накатана.
 
 **Что сделано (Фаза 1):**
 - Скаффолд Next.js 16 + React 19.2 + TS strict (`create-next-app@latest`). Внимание: спека писалась под Next 15 — принят Next 16, откат = смена версии в `package.json`
@@ -221,8 +221,17 @@ Telegram-алерт куратору при флаге. Эту логику **н
 - Security headers + строгий CSP с nonce (`src/proxy.ts` — в Next 16 middleware переименован в proxy)
 - CI: `.github/workflows/ci.yml` (prettier/lint/typecheck/build), Prettier + tailwind-plugin
 
+**Решение по входу (заменяет magic-link из спеки):** email + пароль, с подтверждением email (confirm email ON). «Забыли пароль» — через письмо. OAuth Яндекс/VK — V1.1, не MVP.
+
+**Что сделано (Фаза 2, в процессе):**
+- Supabase EU проект «Anns emotion» (eu-west-1) подключён через коннектор; `.env.local` (URL + publishable key)
+- Клиент-обёртки `@supabase/ssr`: `shared/api/supabase/{client,server}.ts` + `env.ts` + типы `database.types.ts`
+- Миграции: `create_profiles` (таблица + RLS read/insert/update own, без delete + триггер `handle_new_user` + `set_updated_at`), `harden_functions` (search_path + revoke execute)
+- Security-advisors чисты, кроме Leaked Password Protection (тумблер в дашборде, на Артёме)
+- ⚠️ В БД найдены legacy-таблицы `diary_state`, `diary_analysis` (от раннего прототипа) — решить: оставить/снести
+
 **Что НЕ сделано (остаток Фазы 1 + дальше):**
-- F-04 Supabase: реальный проект EU + клиент-обёртка + первые миграции (внешний аккаунт за Артёмом)
+- F-04 Supabase: ✓ подключён + profiles готов. Осталось: SMTP/Resend для писем (сейчас дефолтный SMTP Supabase с лимитом)
 - F-06/F-07 Sentry + PostHog: реальные DSN/ключи (внешнее)
 - F-09 UI Kit через shadcn MCP (в текущей сессии MCP shadcn недоступен — на сессию с доступом)
 - F-12 Cloudflare (инфра, перед запуском)

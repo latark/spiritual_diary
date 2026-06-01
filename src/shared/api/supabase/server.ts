@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 
 import { env } from '@/shared/config/env';
 
+import type { Database } from './database.types';
+
 /**
  * Клиент Supabase для серверных компонентов, server actions и route handlers.
  * Читает/обновляет сессию через cookies (в Next 16 cookies() асинхронный).
@@ -10,7 +12,7 @@ import { env } from '@/shared/config/env';
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+  return createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

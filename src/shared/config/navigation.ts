@@ -7,6 +7,8 @@ export const ROUTES = {
   progress: '/progress',
   profile: '/profile',
   help: '/help',
+  login: '/login',
+  register: '/register',
 } as const;
 
 export interface NavItem {

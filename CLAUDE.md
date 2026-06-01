@@ -228,7 +228,9 @@ Telegram-алерт куратору при флаге. Эту логику **н
 - Клиент-обёртки `@supabase/ssr`: `shared/api/supabase/{client,server}.ts` + `env.ts` + типы `database.types.ts`
 - Миграции: `create_profiles` (таблица + RLS read/insert/update own, без delete + триггер `handle_new_user` + `set_updated_at`), `harden_functions` (search_path + revoke execute)
 - Security-advisors чисты, кроме Leaked Password Protection (тумблер в дашборде, на Артёме)
-- ⚠️ В БД найдены legacy-таблицы `diary_state`, `diary_analysis` (от раннего прототипа) — решить: оставить/снести
+- legacy-таблицы `diary_state`, `diary_analysis` — ✓ удалены (миграция `drop_legacy_prototype_tables`)
+- Слой входа: route-группа `(auth)` (`/login`, `/register` без AppShell), server actions `signIn/signUp/signOut` (`features/auth`), `/auth/callback` (обмен code→сессия), защита `(main)` (неавторизованного → `/login`), обновление сессии в `proxy.ts`. Согласие ПДн + подтверждение email он.
+- ⚠️ Для рабочих писем подтверждения: в Supabase Auth → URL Configuration добавить Redirect URL `http://localhost:3000/auth/callback` (и прод-домен позже)
 
 **Что НЕ сделано (остаток Фазы 1 + дальше):**
 - F-04 Supabase: ✓ подключён + profiles готов. Осталось: SMTP/Resend для писем (сейчас дефолтный SMTP Supabase с лимитом)

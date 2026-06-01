@@ -8,48 +8,6 @@ export type Database = {
   };
   public: {
     Tables: {
-      diary_analysis: {
-        Row: {
-          analysis: Json;
-          created_at: string;
-          period_key: string;
-          scope: string;
-          user_id: string;
-        };
-        Insert: {
-          analysis: Json;
-          created_at?: string;
-          period_key: string;
-          scope: string;
-          user_id: string;
-        };
-        Update: {
-          analysis?: Json;
-          created_at?: string;
-          period_key?: string;
-          scope?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      diary_state: {
-        Row: {
-          state: Json;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          state?: Json;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          state?: Json;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       profiles: {
         Row: {
           base_vibration: number | null;

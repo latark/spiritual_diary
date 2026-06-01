@@ -15,4 +15,6 @@ export const env = {
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   ),
+  /** Базовый URL приложения — для ссылок подтверждения email. */
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
 } as const;

@@ -143,6 +143,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               return (
                 <g
                   key={f.id}
+                  className="petal-group"
                   role="button"
                   tabIndex={0}
                   aria-label={f.name}
@@ -185,6 +186,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               return (
                 <g
                   key={s.id}
+                  className="petal-group"
                   role="button"
                   tabIndex={0}
                   aria-label={s.name}

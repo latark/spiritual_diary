@@ -136,6 +136,19 @@
   .petal:hover {
     filter: brightness(1.12);
   }
+  /* Лепестки фокусируемы для клавиатуры, но без синей UA-рамки и тап-вспышки.
+     Клавиатурный фокус — мягкое золотое свечение вместо прямоугольника. */
+  .petal-group {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .petal-group:focus {
+    outline: none;
+  }
+  .petal-group:focus-visible {
+    outline: none;
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--color-gold) 60%, transparent));
+  }
 }
 
 @layer base {

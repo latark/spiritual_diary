@@ -16,6 +16,7 @@ export type Database = {
           birth_lng: number | null;
           birth_location: string | null;
           birth_time: string | null;
+          chakra_profile: Json | null;
           consent_pdn_accepted_at: string;
           created_at: string;
           display_name: string;
@@ -34,6 +35,7 @@ export type Database = {
           birth_lng?: number | null;
           birth_location?: string | null;
           birth_time?: string | null;
+          chakra_profile?: Json | null;
           consent_pdn_accepted_at: string;
           created_at?: string;
           display_name: string;
@@ -52,6 +54,7 @@ export type Database = {
           birth_lng?: number | null;
           birth_location?: string | null;
           birth_time?: string | null;
+          chakra_profile?: Json | null;
           consent_pdn_accepted_at?: string;
           created_at?: string;
           display_name?: string;

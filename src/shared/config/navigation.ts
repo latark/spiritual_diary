@@ -9,6 +9,7 @@ export const ROUTES = {
   help: '/help',
   login: '/login',
   register: '/register',
+  onboarding: '/onboarding',
 } as const;
 
 export interface NavItem {

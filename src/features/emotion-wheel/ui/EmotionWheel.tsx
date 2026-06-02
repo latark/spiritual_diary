@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import { EMOTION_FAMILIES, type EmotionFamily, type EmotionShade } from '@/shared/content/emotions';
 import { cn } from '@/shared/lib/cn';
@@ -16,14 +16,14 @@ import type { SelectedEmotion } from '../model/types';
 
 const VIEW = 360;
 const C = 180;
-const INNER = 46; // лепестки начинаются от края центрального круга → открытое ядро
+const CENTER_R = 42; // чёткая сердцевина-круг, один размер в обоих видах
+const INNER = 52; // лепестки начинаются с зазором от сердцевины
 const OUTER = 150;
-const FAM_LABEL_R = 98;
-const CHILD_LABEL_R = 96;
-const CENTER_R = 46; // один размер центра и в общем виде, и в раскрытом
+const FAM_LABEL_R = 102;
+const CHILD_LABEL_R = 100;
 
-/** Длительность перехода уровней (мс). Чуть больше .fl-grow в globals.css. */
-const TRANSITION_MS = 1040;
+/** Длительность перехода уровней (мс): втягивание (0.5s) + задержка роста (0.26s) + рост (0.55s). */
+const TRANSITION_MS = 840;
 
 /** Короткие подписи семей для лепестков (полные имена слишком длинные). */
 const SHORT: Record<string, string> = {
@@ -54,12 +54,20 @@ function onActivateKey(e: KeyboardEvent, fn: () => void): void {
   }
 }
 
+/** Подписи появляются чуть позже формы (задержка на проявление, быстрое исчезновение). */
+function labelStyle(visible: boolean): CSSProperties {
+  return {
+    opacity: visible ? 1 : 0,
+    transition: visible ? 'opacity 0.4s ease 0.5s' : 'opacity 0.18s ease',
+    pointerEvents: 'none',
+  };
+}
+
 export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => void }) {
   const [phase, setPhase] = useState<Phase>('overview');
   const [family, setFamily] = useState<EmotionFamily | null>(null);
   const [shade, setShade] = useState<EmotionShade | null>(null);
-  // Цвет/подпись центра живут отдельно от петель: центр статичен, меняется только прозрачность.
-  // Значения сохраняются и во время угасания (не обнуляем на возврате).
+  // Цвет/подпись сердцевины живут отдельно от лепестков: центр статичен, меняется только прозрачность.
   const [centerColor, setCenterColor] = useState<string | null>(null);
   const [centerLabel, setCenterLabel] = useState('');
 
@@ -118,7 +126,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     ? 'нажми, чтобы прочитать и выбрать'
     : 'нажми на подходящий лепесток';
 
-  const centerTransition = 'opacity 0.7s cubic-bezier(0.37, 0, 0.63, 1)';
+  const familyPetals = family;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -146,14 +154,12 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         aria-label="Цветок эмоций"
         style={{ maxWidth: 440, display: 'block', overflow: 'visible' }}
       >
-        {/* Уровень семей */}
+        {/* Лепестки семей (формы; подписи — отдельным слоем ниже) */}
         {overviewMounted && (
-          <g className={phase === 'toFamily' ? 'fl-fall' : 'fl-grow'}>
+          <g className={phase === 'toFamily' ? 'fl-collapse' : 'fl-grow'}>
             {EMOTION_FAMILIES.map((f, i) => {
               const ang = petalAngle(i, EMOTION_FAMILIES.length);
               const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / EMOTION_FAMILIES.length);
-              const lp = pointAt(C, C, ang, FAM_LABEL_R);
-              const label = SHORT[f.id] ?? f.name;
               return (
                 <g
                   key={f.id}
@@ -171,32 +177,25 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                     stroke="rgba(231,207,122,0.30)"
                     strokeWidth={1}
                   />
-                  <text
-                    x={lp.x}
-                    y={lp.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize={12}
-                    fontWeight={500}
-                    fill={readableText(f.color)}
-                    transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    {label}
-                  </text>
                 </g>
               );
             })}
           </g>
         )}
 
-        {/* Уровень оттенков выбранной семьи */}
-        {familyMounted && family && (
-          <g className={phase === 'toOverview' ? 'fl-fall' : 'fl-grow'}>
-            {family.shades.map((s, i) => {
-              const ang = petalAngle(i, family.shades.length);
-              const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / family.shades.length);
-              const lp = pointAt(C, C, ang, CHILD_LABEL_R);
+        {/* Лепестки оттенков выбранной семьи */}
+        {familyMounted && familyPetals && (
+          <g className={phase === 'toOverview' ? 'fl-collapse' : 'fl-grow'}>
+            {familyPetals.shades.map((s, i) => {
+              const ang = petalAngle(i, familyPetals.shades.length);
+              const d = petalPath(
+                C,
+                C,
+                ang,
+                INNER,
+                OUTER,
+                (2 * Math.PI) / familyPetals.shades.length,
+              );
               const isSel = shade?.id === s.id;
               return (
                 <g
@@ -226,64 +225,100 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                       isSel ? { filter: 'drop-shadow(0 0 7px rgba(212,175,55,0.75))' } : undefined
                     }
                   />
-                  <text
-                    x={lp.x}
-                    y={lp.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize={11}
-                    fontWeight={500}
-                    fill={readableText(s.color)}
-                    transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    {s.name}
-                  </text>
                 </g>
               );
             })}
           </g>
         )}
 
-        {/* Статичный центр: пустое ядро + плавная заливка цветом/подписью семьи */}
+        {/* Чёткая сердцевина-круг (всегда). Пустая — только контур; затем плавно наливается цветом. */}
         <circle
           cx={C}
           cy={C}
           r={CENTER_R}
           fill="none"
-          stroke="rgba(231,207,122,0.28)"
-          strokeWidth={1}
+          stroke="#e7cf7a"
+          strokeOpacity={0.55}
+          strokeWidth={2}
           style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.18))' }}
         />
         {centerColor && (
-          <>
-            <circle
-              cx={C}
-              cy={C}
-              r={CENTER_R}
-              fill={centerColor}
-              stroke="rgba(231,207,122,0.5)"
-              strokeWidth={1.5}
-              opacity={centerFilled ? 1 : 0}
-              style={{
-                transition: centerTransition,
-                filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.35))',
-              }}
-            />
-            <text
-              x={C}
-              y={C}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={14}
-              fontWeight={500}
-              fill={readableText(centerColor)}
-              opacity={centerFilled ? 1 : 0}
-              style={{ transition: centerTransition, pointerEvents: 'none' }}
-            >
-              {centerLabel}
-            </text>
-          </>
+          <circle
+            cx={C}
+            cy={C}
+            r={CENTER_R}
+            fill={centerColor}
+            stroke="#e7cf7a"
+            strokeOpacity={0.6}
+            strokeWidth={2}
+            opacity={centerFilled ? 1 : 0}
+            style={{
+              transition: 'opacity 0.55s cubic-bezier(0.37, 0, 0.63, 1)',
+              filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.32))',
+            }}
+          />
+        )}
+
+        {/* Слой подписей: статичные позиции, появляются чуть позже лепестков */}
+        {overviewMounted &&
+          EMOTION_FAMILIES.map((f, i) => {
+            const ang = petalAngle(i, EMOTION_FAMILIES.length);
+            const lp = pointAt(C, C, ang, FAM_LABEL_R);
+            return (
+              <text
+                key={`l-${f.id}`}
+                x={lp.x}
+                y={lp.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={12}
+                fontWeight={500}
+                fill={readableText(f.color)}
+                transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
+                style={labelStyle(phase === 'overview')}
+              >
+                {SHORT[f.id] ?? f.name}
+              </text>
+            );
+          })}
+
+        {familyMounted &&
+          familyPetals &&
+          familyPetals.shades.map((s, i) => {
+            const ang = petalAngle(i, familyPetals.shades.length);
+            const lp = pointAt(C, C, ang, CHILD_LABEL_R);
+            return (
+              <text
+                key={`l-${s.id}`}
+                x={lp.x}
+                y={lp.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={11}
+                fontWeight={500}
+                fill={readableText(s.color)}
+                transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
+                style={labelStyle(phase === 'family')}
+              >
+                {s.name}
+              </text>
+            );
+          })}
+
+        {/* Подпись семьи в сердцевине — появляется после заливки */}
+        {centerColor && (
+          <text
+            x={C}
+            y={C}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={14}
+            fontWeight={500}
+            fill={readableText(centerColor)}
+            style={labelStyle(phase === 'family')}
+          >
+            {centerLabel}
+          </text>
         )}
       </svg>
 

@@ -34,7 +34,7 @@ export function petalPoints(
   sector: number,
   steps = 12,
 ): Pt[] {
-  const hmax = (sector / 2) * 0.92; // лёгкий зазор между лепестками — место для свечения
+  const hmax = (sector / 2) * 0.82; // зазор между лепестками: соприкасаются, но без нахлёста
   const pts: Pt[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;

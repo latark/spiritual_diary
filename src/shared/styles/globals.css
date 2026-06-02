@@ -91,12 +91,11 @@
   }
 }
 
-/* Цветок эмоций (Фаза 4): прорастание новых лепестков и опадание старых.
-   Плавно, но недолго (≤0.5s каждая фаза → суммарно ~1с). */
+/* Цветок эмоций (Фаза 4): лепестки вырастают из сердцевины и втягиваются обратно к центру. */
 @keyframes flower-grow {
   from {
     opacity: 0;
-    transform: scale(0.2);
+    transform: scale(0.12);
   }
   to {
     opacity: 1;
@@ -104,7 +103,7 @@
   }
 }
 
-@keyframes flower-fall {
+@keyframes flower-collapse {
   from {
     opacity: 1;
     transform: scale(1);
@@ -112,21 +111,21 @@
   }
   to {
     opacity: 0;
-    transform: scale(1.06);
-    filter: brightness(0.65);
+    transform: scale(0.12);
+    filter: brightness(0.5);
   }
 }
 
 @layer utilities {
-  /* Группы лепестков масштабируются от центра колеса (координаты viewBox). */
-  /* Мягкая синусоидальная кривая in-out — без отскока и рывков на краях. */
+  /* Группы лепестков масштабируются от центра колеса (координаты viewBox).
+     Рост из центра идёт с небольшой задержкой — сначала старые лепестки втягиваются. */
   .fl-grow {
-    animation: flower-grow 1s cubic-bezier(0.37, 0, 0.63, 1) both;
+    animation: flower-grow 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
     transform-box: view-box;
     transform-origin: 180px 180px;
   }
-  .fl-fall {
-    animation: flower-fall 0.9s cubic-bezier(0.37, 0, 0.63, 1) both;
+  .fl-collapse {
+    animation: flower-collapse 0.5s cubic-bezier(0.4, 0, 0.6, 1) both;
     transform-box: view-box;
     transform-origin: 180px 180px;
   }

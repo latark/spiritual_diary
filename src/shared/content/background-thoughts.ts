@@ -3,15 +3,15 @@
  * из методички школы (это финальный авторский контент, тексты не выдумываем).
  *
  * Разметка:
- *  - sphere — основная сфера жизни (= одна из 7 «Ревизии»/чакр), к которой относится установка;
- *  - emotions — семьи эмоций, за которыми эта установка обычно стоит (вторичный фильтр).
+ *  - sphere — основная сфера жизни (= одна из 7 «Ревизии»/чакр);
+ *  - negativeEmotions — семьи негативных эмоций, за которыми стоит НЕГАТИВНАЯ установка
+ *    (для шага «фоновая мысль» при негативной эмоции — ловим ограничивающее убеждение);
+ *  - positiveEmotions — семьи позитивных эмоций, которым созвучна ПОЗИТИВНАЯ переустановка
+ *    (для возможного шага-аффирмации при позитивной эмоции — усиливаем светлое убеждение).
  *
- * Используется на шаге выбора фоновой мысли (только для негативных эмоций):
- * фильтруем по выбранной сфере, поднимаем подходящие под эмоцию, плюс «показать все».
- * Позитивную переустановку храним для будущего отклика «проводника» после записи.
- *
- * ⚠️ Тексты — финальные (методичка). Разметка sphere/emotions — рабочая, спорные пункты
- * стоит сверить с куратором школы (§10).
+ * ⚠️ Тексты — финальные (методичка). Разметка — рабочая, спорные пункты сверить с куратором (§10).
+ * ⚠️ Позитивные эмоции распределены неровно: «Удивление» (surprise) не покрыто ни одной
+ * переустановкой; «Интерес» — слабо. «Любовь/Покой/Радость» — хорошо.
  */
 
 import type { LifeSphereId } from './life-spheres';
@@ -22,8 +22,10 @@ export interface BackgroundThought {
   negative: string;
   positive: string;
   sphere: LifeSphereId;
-  /** id семей эмоций (из emotions.ts), за которыми установка обычно стоит. */
-  emotions: string[];
+  /** Семьи негативных эмоций, за которыми обычно стоит негативная установка. */
+  negativeEmotions: string[];
+  /** Семьи позитивных эмоций, которым созвучна позитивная переустановка. */
+  positiveEmotions: string[];
 }
 
 export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
@@ -32,70 +34,80 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     negative: 'Люди должны вести себя так, как я ожидаю.',
     positive: 'Каждый человек имеет право вести себя так, как считает нужным.',
     sphere: 'heart',
-    emotions: ['anger'],
+    negativeEmotions: ['anger'],
+    positiveEmotions: ['love', 'peace'],
   },
   {
     id: 2,
     negative: 'Я должен быть хорошим и удобным для всех.',
     positive: 'Я уникальная личность и свободно проявляю себя перед людьми.',
     sphere: 'throat',
-    emotions: ['shame', 'fear'],
+    negativeEmotions: ['shame', 'fear'],
+    positiveEmotions: ['joy', 'interest'],
   },
   {
     id: 3,
     negative: 'Любовь — это желание сделать приятно.',
     positive: 'Любовь — это помощь на пути к Свету.',
     sphere: 'heart',
-    emotions: [],
+    negativeEmotions: [],
+    positiveEmotions: ['love'],
   },
   {
     id: 4,
     negative: 'Страдания и боль — это зло.',
     positive: 'Страдания и боль — это сигналы о необходимости восстановления гармонии и здоровья.',
     sphere: 'root',
-    emotions: ['fear', 'sadness'],
+    negativeEmotions: ['fear', 'sadness'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 5,
     negative: 'Физическая смерть — это зло.',
     positive: 'Физическая смерть — это переход в духовный мир и возможность родиться снова.',
     sphere: 'crown',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 6,
     negative: 'Я виноват(а). Мне нет прощения.',
     positive: 'Любую ошибку можно исправить и извлечь из неё урок на будущее.',
     sphere: 'heart',
-    emotions: ['shame', 'sadness'],
+    negativeEmotions: ['shame', 'sadness'],
+    positiveEmotions: ['love', 'peace'],
   },
   {
     id: 7,
     negative: 'Я жду от окружающих внимания и любви.',
     positive: 'Я Источник Любви и Света для всех людей.',
     sphere: 'heart',
-    emotions: ['sadness'],
+    negativeEmotions: ['sadness'],
+    positiveEmotions: ['love'],
   },
   {
     id: 8,
     negative: 'Я избегаю ответственности за свои слова и поступки.',
     positive: 'Я люблю свободу и беру на себя ответственность за свою жизнь.',
     sphere: 'solar',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 9,
     negative: 'Деньги — это зло и грязь.',
     positive: 'Деньги — это материальная энергия Бога, данная людям для радости и развития.',
     sphere: 'solar',
-    emotions: ['shame', 'disgust'],
+    negativeEmotions: ['shame', 'disgust'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 10,
     negative: 'Я страдаю за грехи родителей (рода, своих прошлых жизней).',
     positive: 'Я хозяин(ка) своей жизни и сам(а) строю нужную мне реальность.',
     sphere: 'solar',
-    emotions: ['sadness', 'fear'],
+    negativeEmotions: ['sadness', 'fear'],
+    positiveEmotions: ['joy', 'interest'],
   },
   {
     id: 11,
@@ -103,28 +115,32 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Доказательства реальности Бога (духовного мира) существуют во мне самом(ой), и каждый день я учусь их видеть.',
     sphere: 'crown',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace', 'interest'],
   },
   {
     id: 12,
     negative: 'Я жду счастливого случая, ничего не делая для исполнения своей мечты.',
     positive: 'Я сам(а) творец своего счастья.',
     sphere: 'solar',
-    emotions: ['sadness'],
+    negativeEmotions: ['sadness'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 13,
     negative: 'Я жду подтверждения правильности выбора от других людей.',
     positive: 'Я имею право на любой выбор и принимаю на себя ответственность за его последствия.',
     sphere: 'solar',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 14,
     negative: 'Моё тело некрасиво (уродливо, безобразно).',
     positive: 'Моё тело — прекрасный Храм Духа.',
     sphere: 'root',
-    emotions: ['shame'],
+    negativeEmotions: ['shame'],
+    positiveEmotions: ['love', 'joy'],
   },
   {
     id: 15,
@@ -132,7 +148,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Моё тело дано мне Богом для радости, я благодарю Бога за наслаждения, которые оно мне даёт.',
     sphere: 'sacral',
-    emotions: ['shame'],
+    negativeEmotions: ['shame'],
+    positiveEmotions: ['joy', 'love'],
   },
   {
     id: 16,
@@ -140,42 +157,48 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я благодарю души животных за плоть, отданную на питание людям, и посылаю им и их создателям свет своей Любви.',
     sphere: 'root',
-    emotions: ['disgust'],
+    negativeEmotions: ['disgust'],
+    positiveEmotions: ['love'],
   },
   {
     id: 17,
     negative: 'Секс — это низко и грязно, он приравнивает людей к животным.',
     positive: 'Сексуальная энергия — это проявление Божественной Любви через тело.',
     sphere: 'sacral',
-    emotions: ['shame', 'disgust'],
+    negativeEmotions: ['shame', 'disgust'],
+    positiveEmotions: ['love', 'joy'],
   },
   {
     id: 18,
     negative: 'Власть и богатство опасны для духовного развития.',
     positive: 'Власть и богатство — это возможности, данные Богом для духовного развития.',
     sphere: 'solar',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['interest', 'joy'],
   },
   {
     id: 19,
     negative: 'Работа должна быть приятной.',
     positive: 'Меня радует любой труд для своего развития и блага других людей.',
     sphere: 'solar',
-    emotions: ['anger'],
+    negativeEmotions: ['anger'],
+    positiveEmotions: ['joy', 'interest'],
   },
   {
     id: 20,
     negative: 'Отдых — это пустая трата времени.',
     positive: 'Отдых — это потребность тела, необходимая для более эффективной работы.',
     sphere: 'solar',
-    emotions: ['shame'],
+    negativeEmotions: ['shame'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 21,
     negative: 'Я не могу слышать своё высшее Я.',
     positive: 'Я всегда в контакте с высшим Я через духовный канал.',
     sphere: 'crown',
-    emotions: ['sadness', 'fear'],
+    negativeEmotions: ['sadness', 'fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 22,
@@ -183,42 +206,48 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Доверять высшему Я безопасно, ведь это высшая часть меня, имеющая ответы на все мои вопросы.',
     sphere: 'crown',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 23,
     negative: 'Я недостоин(на) любви.',
     positive: 'Я любимое дитя Бога.',
     sphere: 'heart',
-    emotions: ['shame', 'sadness'],
+    negativeEmotions: ['shame', 'sadness'],
+    positiveEmotions: ['love'],
   },
   {
     id: 24,
     negative: 'Я должен(на) создать семью и родить детей.',
     positive: 'Я сам(а) решаю, что в жизни для меня важнее всего.',
     sphere: 'sacral',
-    emotions: ['shame', 'fear'],
+    negativeEmotions: ['shame', 'fear'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 25,
     negative: 'Нужно молчать, когда мне больно, грустно или страшно.',
     positive: 'Я свободно проявляю любые чувства и эмоции и преобразую их в чистый Свет Любви.',
     sphere: 'throat',
-    emotions: ['sadness', 'fear', 'shame'],
+    negativeEmotions: ['sadness', 'fear', 'shame'],
+    positiveEmotions: ['love', 'joy'],
   },
   {
     id: 26,
     negative: 'Нужно подавлять гнев и раздражение.',
     positive: 'Когда я ощущаю гнев, я направляю его энергию на изменение себя и своей жизни.',
     sphere: 'throat',
-    emotions: ['anger'],
+    negativeEmotions: ['anger'],
+    positiveEmotions: ['interest'],
   },
   {
     id: 27,
     negative: 'Я ни на что не способен(на).',
     positive: 'Я могу научиться чему угодно благодаря данным мне Богом разуму и телу.',
     sphere: 'solar',
-    emotions: ['shame', 'sadness'],
+    negativeEmotions: ['shame', 'sadness'],
+    positiveEmotions: ['interest', 'joy'],
   },
   {
     id: 28,
@@ -226,21 +255,24 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я прощаю всех людей, которые негативно настроены против меня, и посылаю им Свет своей Любви.',
     sphere: 'heart',
-    emotions: ['sadness', 'anger'],
+    negativeEmotions: ['sadness', 'anger'],
+    positiveEmotions: ['love'],
   },
   {
     id: 29,
     negative: 'Доверять людям опасно.',
     positive: 'Я доверяю Богу и людям, которых Он посылает мне навстречу.',
     sphere: 'heart',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace', 'love'],
   },
   {
     id: 30,
     negative: 'Я живу в опасном мире.',
     positive: 'Я полностью доверяю свою жизнь Богу, любое место в Его мире безопасно для меня.',
     sphere: 'root',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 31,
@@ -248,14 +280,16 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я благодарю свои сомнения за защиту от ошибок и верю только себе, когда совершаю выбор.',
     sphere: 'third_eye',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['interest'],
   },
   {
     id: 32,
     negative: 'Я лучше (выше, духовнее), чем все люди или чем какой-то человек.',
     positive: 'Все люди равны перед Богом в Свете Его Любви.',
     sphere: 'heart',
-    emotions: ['disgust'],
+    negativeEmotions: ['disgust'],
+    positiveEmotions: ['love', 'peace'],
   },
   {
     id: 33,
@@ -263,35 +297,40 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Осуждение и критика безопасны для меня, потому что помогают мне расти и развиваться.',
     sphere: 'heart',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['interest', 'peace'],
   },
   {
     id: 34,
     negative: 'Опасно делиться своей энергией.',
     positive: 'Чем больше я излучаю в мир Света, тем больше я его получаю от Бога.',
     sphere: 'heart',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['love', 'joy'],
   },
   {
     id: 35,
     negative: 'Меня легко разозлить, обидеть, вывести из равновесия.',
     positive: 'Я сам(а) управляю своими чувствами и эмоциями.',
     sphere: 'solar',
-    emotions: ['anger'],
+    negativeEmotions: ['anger'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 36,
     negative: 'Я должен(на) доказывать людям свою любовь.',
     positive: 'Каждый человек принимает Свет Любви по мере своей готовности.',
     sphere: 'heart',
-    emotions: ['shame'],
+    negativeEmotions: ['shame'],
+    positiveEmotions: ['love', 'peace'],
   },
   {
     id: 37,
     negative: 'Я должен(на) жить, как живут другие люди, и иметь всё, что есть у них.',
     positive: 'Я свободная и уникальная личность и сам(а) выбираю, как мне жить и что мне иметь.',
     sphere: 'throat',
-    emotions: ['anger', 'shame'],
+    negativeEmotions: ['anger', 'shame'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 38,
@@ -299,7 +338,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Любая материя — это инструмент развития духа, а Источник счастья находится в моём сердце.',
     sphere: 'solar',
-    emotions: ['sadness'],
+    negativeEmotions: ['sadness'],
+    positiveEmotions: ['peace', 'joy'],
   },
   {
     id: 39,
@@ -307,21 +347,24 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Любые изменения — это возможность для роста и развития, моё будущее наполнено Светом и Любовью.',
     sphere: 'third_eye',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['interest', 'peace'],
   },
   {
     id: 40,
     negative: 'Любимые люди всегда должны быть рядом со мной.',
     positive: 'Любовь позволяет быть рядом независимо от времени и расстояния.',
     sphere: 'sacral',
-    emotions: ['sadness', 'fear'],
+    negativeEmotions: ['sadness', 'fear'],
+    positiveEmotions: ['love', 'peace'],
   },
   {
     id: 41,
     negative: 'Одиночество пугает меня.',
     positive: 'Одиночество — это время, данное мне Богом для познания себя и беседы с Ним.',
     sphere: 'crown',
-    emotions: ['fear', 'sadness'],
+    negativeEmotions: ['fear', 'sadness'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 42,
@@ -329,7 +372,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Любые мои привычки созданы мной и могут быть изменены в любой момент, когда я захочу.',
     sphere: 'solar',
-    emotions: ['shame'],
+    negativeEmotions: ['shame'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 43,
@@ -337,14 +381,16 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Высшее Я — это моя духовная часть, оно всегда в контакте со мной и отвечает первым на любые вопросы к нему.',
     sphere: 'crown',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 44,
     negative: 'Я не доверяю себе.',
     positive: 'Я даю себе право на ошибки, мои ошибки позволят мне приобрести бесценный опыт.',
     sphere: 'solar',
-    emotions: ['fear', 'shame'],
+    negativeEmotions: ['fear', 'shame'],
+    positiveEmotions: ['love', 'interest'],
   },
   {
     id: 45,
@@ -352,7 +398,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'У меня достаточно сил и энергии на любые цели и желания, согласованные с Волей Любящего меня Бога.',
     sphere: 'root',
-    emotions: ['sadness', 'fear'],
+    negativeEmotions: ['sadness', 'fear'],
+    positiveEmotions: ['joy'],
   },
   {
     id: 46,
@@ -360,7 +407,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я доверяю Божественной защите вокруг меня; пока я нахожусь в состоянии любви, я в полной безопасности.',
     sphere: 'root',
-    emotions: ['fear'],
+    negativeEmotions: ['fear'],
+    positiveEmotions: ['peace'],
   },
   {
     id: 47,
@@ -368,7 +416,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я благодарю людей, которые находятся у власти, за их тяжёлый труд, посылаю их душам Свет своей Любви и желаю им удачи.',
     sphere: 'heart',
-    emotions: ['anger'],
+    negativeEmotions: ['anger'],
+    positiveEmotions: ['love'],
   },
   {
     id: 48,
@@ -376,7 +425,8 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я прощаю всех преступников за их злые дела, посылаю их душам Свет своей Любви и желаю им вернуться на путь Божественного Света.',
     sphere: 'heart',
-    emotions: ['anger', 'disgust'],
+    negativeEmotions: ['anger', 'disgust'],
+    positiveEmotions: ['love'],
   },
   {
     id: 49,
@@ -384,13 +434,15 @@ export const BACKGROUND_THOUGHTS: BackgroundThought[] = [
     positive:
       'Я смотрю на всех людей глазами Божественной Любви и принимаю их такими, какие они есть.',
     sphere: 'heart',
-    emotions: ['anger', 'disgust'],
+    negativeEmotions: ['anger', 'disgust'],
+    positiveEmotions: ['love'],
   },
   {
     id: 50,
     negative: 'Я осуждаю себя за прошлые ошибки.',
     positive: 'Я прощаю себя за все свои ошибки и люблю себя так, как любит меня Бог.',
     sphere: 'heart',
-    emotions: ['shame', 'sadness'],
+    negativeEmotions: ['shame', 'sadness'],
+    positiveEmotions: ['love'],
   },
 ];

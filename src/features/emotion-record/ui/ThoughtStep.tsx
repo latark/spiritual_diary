@@ -32,11 +32,13 @@ export function ThoughtStep({
   const { primary, all } = useMemo(() => {
     const emotionFirst = (arr: typeof BACKGROUND_THOUGHTS) =>
       [...arr].sort(
-        (a, b) => Number(b.emotions.includes(familyId)) - Number(a.emotions.includes(familyId)),
+        (a, b) =>
+          Number(b.negativeEmotions.includes(familyId)) -
+          Number(a.negativeEmotions.includes(familyId)),
       );
     const base = sphereId
       ? BACKGROUND_THOUGHTS.filter((t) => t.sphere === sphereId)
-      : BACKGROUND_THOUGHTS.filter((t) => t.emotions.includes(familyId));
+      : BACKGROUND_THOUGHTS.filter((t) => t.negativeEmotions.includes(familyId));
     return { primary: emotionFirst(base), all: emotionFirst(BACKGROUND_THOUGHTS) };
   }, [familyId, sphereId]);
 

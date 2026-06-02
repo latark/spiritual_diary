@@ -125,7 +125,7 @@
     transform-origin: 180px 180px;
   }
   .fl-fall {
-    animation: flower-fall 0.2s var(--ease-gentle) both;
+    animation: flower-fall 0.55s var(--ease-gentle) both;
     transform-box: view-box;
     transform-origin: 180px 180px;
   }

@@ -23,6 +23,9 @@ const CHILD_LABEL_R = 92;
 const HUB_R = 26;
 const FAM_CIRCLE_R = 46;
 
+/** Длительность перехода между уровнями (мс). Должна совпадать с .fl-fall/.fl-grow в globals.css. */
+const TRANSITION_MS = 560;
+
 /** Короткие подписи семей для лепестков (полные имена слишком длинные). */
 const SHORT: Record<string, string> = {
   joy: 'Радость',
@@ -37,7 +40,7 @@ const SHORT: Record<string, string> = {
   anger: 'Гнев',
 };
 
-type Phase = 'overview' | 'leaving' | 'family' | 'returning';
+type Phase = 'overview' | 'toFamily' | 'family' | 'toOverview';
 
 function buzz(ms = 8): void {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
@@ -58,16 +61,16 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const [shade, setShade] = useState<EmotionShade | null>(null);
 
   useEffect(() => {
-    if (phase === 'leaving') {
-      const t = setTimeout(() => setPhase('family'), 200);
+    if (phase === 'toFamily') {
+      const t = setTimeout(() => setPhase('family'), TRANSITION_MS);
       return () => clearTimeout(t);
     }
-    if (phase === 'returning') {
+    if (phase === 'toOverview') {
       const t = setTimeout(() => {
         setFamily(null);
         setShade(null);
         setPhase('overview');
-      }, 200);
+      }, TRANSITION_MS);
       return () => clearTimeout(t);
     }
     return undefined;
@@ -78,13 +81,13 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     buzz(10);
     setFamily(f);
     setShade(null);
-    setPhase('leaving');
+    setPhase('toFamily');
   }
 
   function back(): void {
     if (phase !== 'family') return;
     buzz(6);
-    setPhase('returning');
+    setPhase('toOverview');
   }
 
   function commit(s: EmotionShade): void {
@@ -98,19 +101,22 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     });
   }
 
-  const showOverview = phase === 'overview' || phase === 'leaving';
-  const showFamily = phase === 'family' || phase === 'returning';
+  // Старый и новый уровни сосуществуют во время перехода: один угасает, другой одновременно прорастает.
+  const overviewMounted = phase !== 'family';
+  const familyMounted = phase !== 'overview';
 
-  const title =
-    showFamily && family
-      ? `«${SHORT[family.id] ?? family.name}» — какой оттенок ближе?`
-      : 'Что ты сейчас чувствуешь?';
-  const subtitle = showFamily ? 'нажми, чтобы прочитать и выбрать' : 'нажми на подходящий лепесток';
+  const familyHeader = (phase === 'toFamily' || phase === 'family') && family;
+  const title = familyHeader
+    ? `«${SHORT[family.id] ?? family.name}» — какой оттенок ближе?`
+    : 'Что ты сейчас чувствуешь?';
+  const subtitle = familyHeader
+    ? 'нажми, чтобы прочитать и выбрать'
+    : 'нажми на подходящий лепесток';
 
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="flex min-h-[2.75rem] w-full max-w-md items-center gap-2">
-        {showFamily && (
+        {phase === 'family' && (
           <button
             type="button"
             onClick={back}
@@ -133,8 +139,20 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         aria-label="Цветок эмоций"
         style={{ maxWidth: 440, display: 'block', overflow: 'visible' }}
       >
-        {showOverview && (
-          <g className={phase === 'leaving' ? 'fl-fall' : 'fl-grow'}>
+        {/* Центральная сердцевина (всегда, нижний слой) */}
+        <circle
+          cx={C}
+          cy={C}
+          r={HUB_R}
+          fill="#221b3d"
+          stroke="rgba(231,207,122,0.35)"
+          strokeWidth={1}
+          style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.25))' }}
+        />
+
+        {/* Уровень семей */}
+        {overviewMounted && (
+          <g className={phase === 'toFamily' ? 'fl-fall' : 'fl-grow'}>
             {EMOTION_FAMILIES.map((f, i) => {
               const ang = petalAngle(i, EMOTION_FAMILIES.length);
               const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / EMOTION_FAMILIES.length);
@@ -176,8 +194,9 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
           </g>
         )}
 
-        {showFamily && family && (
-          <g className={phase === 'returning' ? 'fl-fall' : 'fl-grow'}>
+        {/* Уровень оттенков выбранной семьи (+ центр-семья) */}
+        {familyMounted && family && (
+          <g className={phase === 'toOverview' ? 'fl-fall' : 'fl-grow'}>
             {family.shades.map((s, i) => {
               const ang = petalAngle(i, family.shades.length);
               const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / family.shades.length);
@@ -227,45 +246,28 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                 </g>
               );
             })}
+            <circle
+              cx={C}
+              cy={C}
+              r={FAM_CIRCLE_R}
+              fill={family.color}
+              stroke="rgba(231,207,122,0.5)"
+              strokeWidth={1.5}
+              style={{ filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.35))' }}
+            />
+            <text
+              x={C}
+              y={C}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={14}
+              fontWeight={500}
+              fill={readableText(family.color)}
+              style={{ pointerEvents: 'none' }}
+            >
+              {SHORT[family.id] ?? family.name}
+            </text>
           </g>
-        )}
-
-        {showOverview ? (
-          <circle
-            cx={C}
-            cy={C}
-            r={HUB_R}
-            fill="#221b3d"
-            stroke="rgba(231,207,122,0.35)"
-            strokeWidth={1}
-            style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.25))' }}
-          />
-        ) : (
-          family && (
-            <>
-              <circle
-                cx={C}
-                cy={C}
-                r={FAM_CIRCLE_R}
-                fill={family.color}
-                stroke="rgba(231,207,122,0.5)"
-                strokeWidth={1.5}
-                style={{ filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.35))' }}
-              />
-              <text
-                x={C}
-                y={C}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={14}
-                fontWeight={500}
-                fill={readableText(family.color)}
-                style={{ pointerEvents: 'none' }}
-              >
-                {SHORT[family.id] ?? family.name}
-              </text>
-            </>
-          )
         )}
       </svg>
 

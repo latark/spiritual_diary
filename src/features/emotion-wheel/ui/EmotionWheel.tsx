@@ -23,8 +23,8 @@ const CHILD_LABEL_R = 92;
 const HUB_R = 26;
 const FAM_CIRCLE_R = 46;
 
-/** Длительность перехода между уровнями (мс). Должна совпадать с .fl-fall/.fl-grow в globals.css. */
-const TRANSITION_MS = 560;
+/** Длительность перехода между уровнями (мс). Чуть больше .fl-grow в globals.css. */
+const TRANSITION_MS = 1040;
 
 /** Короткие подписи семей для лепестков (полные имена слишком длинные). */
 const SHORT: Record<string, string> = {

@@ -96,7 +96,7 @@
 @keyframes flower-grow {
   from {
     opacity: 0;
-    transform: scale(0.12);
+    transform: scale(0.2);
   }
   to {
     opacity: 1;
@@ -112,20 +112,21 @@
   }
   to {
     opacity: 0;
-    transform: scale(1.12);
-    filter: brightness(0.4);
+    transform: scale(1.06);
+    filter: brightness(0.65);
   }
 }
 
 @layer utilities {
   /* Группы лепестков масштабируются от центра колеса (координаты viewBox). */
+  /* Мягкая синусоидальная кривая in-out — без отскока и рывков на краях. */
   .fl-grow {
-    animation: flower-grow 0.5s var(--ease-out-back) both;
+    animation: flower-grow 1s cubic-bezier(0.37, 0, 0.63, 1) both;
     transform-box: view-box;
     transform-origin: 180px 180px;
   }
   .fl-fall {
-    animation: flower-fall 0.55s var(--ease-gentle) both;
+    animation: flower-fall 0.9s cubic-bezier(0.37, 0, 0.63, 1) both;
     transform-box: view-box;
     transform-origin: 180px 180px;
   }

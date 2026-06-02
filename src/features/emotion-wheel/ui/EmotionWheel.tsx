@@ -22,10 +22,9 @@ const OUTER = 150;
 const FAM_LABEL_R = 102;
 const CHILD_LABEL_R = 100;
 
-/** Длительность перехода уровней (мс): втягивание (0.5s) + задержка роста (0.26s) + рост (0.55s). */
-const TRANSITION_MS = 840;
+/** Переход «свет и растворение»: растворение (0.55s) + рост из размытия (задержка 0.3s + 0.6s). */
+const TRANSITION_MS = 920;
 
-/** Короткие подписи семей для лепестков (полные имена слишком длинные). */
 const SHORT: Record<string, string> = {
   joy: 'Радость',
   love: 'Любовь',
@@ -38,6 +37,18 @@ const SHORT: Record<string, string> = {
   disgust: 'Отвращение',
   anger: 'Гнев',
 };
+
+/** Золотые частицы света, дрейфующие к сердцевине во время перехода (детерминированы — SSR-safe). */
+const MOTES = Array.from({ length: 14 }, (_, i) => {
+  const ang = (i / 14) * Math.PI * 2 + (((i * 37) % 10) - 5) / 60;
+  const r = 94 + ((i * 53) % 30);
+  return {
+    dx: Math.round(r * Math.cos(ang) * 10) / 10,
+    dy: Math.round(r * Math.sin(ang) * 10) / 10,
+    rad: 1.5 + ((i * 17) % 3) * 0.5,
+    delay: ((i * 29) % 5) * 0.035,
+  };
+});
 
 type Phase = 'overview' | 'toFamily' | 'family' | 'toOverview';
 
@@ -54,11 +65,14 @@ function onActivateKey(e: KeyboardEvent, fn: () => void): void {
   }
 }
 
-/** Подписи появляются чуть позже формы (задержка на проявление, быстрое исчезновение). */
+/** Подписи проявляются чуть позже формы (из лёгкого размытия), исчезают быстро. */
 function labelStyle(visible: boolean): CSSProperties {
   return {
     opacity: visible ? 1 : 0,
-    transition: visible ? 'opacity 0.4s ease 0.5s' : 'opacity 0.18s ease',
+    filter: visible ? 'blur(0)' : 'blur(3px)',
+    transition: visible
+      ? 'opacity 0.4s ease 0.45s, filter 0.4s ease 0.45s'
+      : 'opacity 0.18s ease, filter 0.18s ease',
     pointerEvents: 'none',
   };
 }
@@ -67,9 +81,9 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const [phase, setPhase] = useState<Phase>('overview');
   const [family, setFamily] = useState<EmotionFamily | null>(null);
   const [shade, setShade] = useState<EmotionShade | null>(null);
-  // Цвет/подпись сердцевины живут отдельно от лепестков: центр статичен, меняется только прозрачность.
   const [centerColor, setCenterColor] = useState<string | null>(null);
   const [centerLabel, setCenterLabel] = useState('');
+  const [transitionId, setTransitionId] = useState(0);
 
   useEffect(() => {
     if (phase === 'toFamily') {
@@ -94,12 +108,14 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     setShade(null);
     setCenterColor(f.color);
     setCenterLabel(SHORT[f.id] ?? f.name);
+    setTransitionId((n) => n + 1);
     setPhase('toFamily');
   }
 
   function back(): void {
     if (phase !== 'family') return;
     buzz(6);
+    setTransitionId((n) => n + 1);
     setPhase('toOverview');
   }
 
@@ -116,7 +132,14 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
 
   const overviewMounted = phase !== 'family';
   const familyMounted = phase !== 'overview';
+  const transitioning = phase === 'toFamily' || phase === 'toOverview';
   const centerFilled = phase === 'toFamily' || phase === 'family';
+  const familyPetals = family;
+
+  const overviewClass =
+    phase === 'toFamily' ? 'petal-dissolve' : phase === 'toOverview' ? 'petal-materialize' : '';
+  const familyClass =
+    phase === 'toFamily' ? 'petal-materialize' : phase === 'toOverview' ? 'petal-dissolve' : '';
 
   const familyHeader = (phase === 'toFamily' || phase === 'family') && family;
   const title = familyHeader
@@ -125,8 +148,6 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const subtitle = familyHeader
     ? 'нажми, чтобы прочитать и выбрать'
     : 'нажми на подходящий лепесток';
-
-  const familyPetals = family;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -154,9 +175,25 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         aria-label="Цветок эмоций"
         style={{ maxWidth: 440, display: 'block', overflow: 'visible' }}
       >
-        {/* Лепестки семей (формы; подписи — отдельным слоем ниже) */}
+        {/* Вспышка ядра: оно «впитывает свет» в момент перехода */}
+        {transitioning && (
+          <circle
+            key={`ignite-${transitionId}`}
+            cx={C}
+            cy={C}
+            r={66}
+            fill="#e7cf7a"
+            style={{
+              filter: 'blur(16px)',
+              animation: 'core-ignite 0.85s ease-out both',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        {/* Лепестки семей (растворяются / сгущаются; подписи — отдельным слоем) */}
         {overviewMounted && (
-          <g className={phase === 'toFamily' ? 'fl-collapse' : 'fl-grow'}>
+          <g className={overviewClass}>
             {EMOTION_FAMILIES.map((f, i) => {
               const ang = petalAngle(i, EMOTION_FAMILIES.length);
               const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / EMOTION_FAMILIES.length);
@@ -185,7 +222,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
 
         {/* Лепестки оттенков выбранной семьи */}
         {familyMounted && familyPetals && (
-          <g className={phase === 'toOverview' ? 'fl-collapse' : 'fl-grow'}>
+          <g className={familyClass}>
             {familyPetals.shades.map((s, i) => {
               const ang = petalAngle(i, familyPetals.shades.length);
               const d = petalPath(
@@ -231,7 +268,30 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
           </g>
         )}
 
-        {/* Чёткая сердцевина-круг (всегда). Пустая — только контур; затем плавно наливается цветом. */}
+        {/* Золотые частицы света, дрейфующие в сердцевину */}
+        {transitioning && (
+          <g key={`motes-${transitionId}`} style={{ pointerEvents: 'none' }}>
+            {MOTES.map((m, i) => {
+              const st: Record<string, string> = {
+                '--dx': `${m.dx}px`,
+                '--dy': `${m.dy}px`,
+                animation: `mote 0.75s ease-out ${m.delay}s both`,
+              };
+              return (
+                <circle
+                  key={i}
+                  cx={C}
+                  cy={C}
+                  r={m.rad}
+                  fill="#e7cf7a"
+                  style={st as CSSProperties}
+                />
+              );
+            })}
+          </g>
+        )}
+
+        {/* Чёткая сердцевина-круг (всегда). Пустая — контур; затем плавно наливается цветом. */}
         <circle
           cx={C}
           cy={C}
@@ -253,13 +313,13 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
             strokeWidth={2}
             opacity={centerFilled ? 1 : 0}
             style={{
-              transition: 'opacity 0.55s cubic-bezier(0.37, 0, 0.63, 1)',
+              transition: 'opacity 0.6s ease 0.1s',
               filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.32))',
             }}
           />
         )}
 
-        {/* Слой подписей: статичные позиции, появляются чуть позже лепестков */}
+        {/* Слой подписей: статичные позиции, проявляются чуть позже лепестков */}
         {overviewMounted &&
           EMOTION_FAMILIES.map((f, i) => {
             const ang = petalAngle(i, EMOTION_FAMILIES.length);
@@ -305,7 +365,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
             );
           })}
 
-        {/* Подпись семьи в сердцевине — появляется после заливки */}
+        {/* Подпись семьи в сердцевине — после заливки */}
         {centerColor && (
           <text
             x={C}

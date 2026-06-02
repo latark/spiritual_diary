@@ -91,43 +91,63 @@
   }
 }
 
-/* Цветок эмоций (Фаза 4): лепестки вырастают из сердцевины и втягиваются обратно к центру. */
-@keyframes flower-grow {
+/* Цветок эмоций (Фаза 4): «свет и растворение».
+   Геометрию НЕ масштабируем — анимируем свет: прозрачность, размытие, свечение, дрейф частиц. */
+@keyframes petal-dissolve {
   from {
-    opacity: 0;
-    transform: scale(0.12);
+    opacity: 1;
+    filter: blur(0);
   }
   to {
-    opacity: 1;
-    transform: scale(1);
+    opacity: 0;
+    filter: blur(7px);
   }
 }
 
-@keyframes flower-collapse {
+@keyframes petal-materialize {
   from {
-    opacity: 1;
-    transform: scale(1);
-    filter: brightness(1);
+    opacity: 0;
+    filter: blur(8px);
   }
   to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes core-ignite {
+  0% {
     opacity: 0;
-    transform: scale(0.12);
-    filter: brightness(0.5);
+  }
+  45% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes mote {
+  0% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0px, 0px);
   }
 }
 
 @layer utilities {
-  /* Группы лепестков масштабируются от центра колеса (координаты viewBox).
-     Рост из центра идёт с небольшой задержкой — сначала старые лепестки втягиваются. */
-  .fl-grow {
-    animation: flower-grow 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
-    transform-box: view-box;
-    transform-origin: 180px 180px;
+  /* Старые лепестки растворяются в свет; новые сгущаются из размытия чуть позже. */
+  .petal-dissolve {
+    animation: petal-dissolve 0.55s ease-in both;
   }
-  .fl-collapse {
-    animation: flower-collapse 0.5s cubic-bezier(0.4, 0, 0.6, 1) both;
-    transform-box: view-box;
-    transform-origin: 180px 180px;
+  .petal-materialize {
+    animation: petal-materialize 0.6s ease-out 0.3s both;
   }
   .petal {
     transition: filter 0.2s var(--ease-gentle);

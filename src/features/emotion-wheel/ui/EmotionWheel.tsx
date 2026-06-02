@@ -304,12 +304,9 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   }
   // подписи проявляются чуть позже лепестков
   function labelStyle(visible: boolean): CSSProperties {
-    const p = MOTION_PRESET;
     return {
       opacity: visible ? 1 : 0,
-      transition: visible
-        ? `opacity ${p.materializeMs}ms ease ${p.materializeMs}ms`
-        : `opacity 150ms ease`,
+      transition: visible ? 'opacity 240ms ease 90ms' : 'opacity 140ms ease',
       pointerEvents: 'none',
     };
   }
@@ -469,7 +466,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                   fontWeight={500}
                   fill={readableText(f.color)}
                   transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                  style={labelStyle(phase === 'overview')}
+                  style={labelStyle(overviewPresent)}
                 >
                   {SHORT[f.id] ?? f.name}
                 </text>
@@ -493,7 +490,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                   fontWeight={500}
                   fill={readableText(s.color)}
                   transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                  style={labelStyle(phase === 'family')}
+                  style={labelStyle(familyPresent)}
                 >
                   {s.name}
                 </text>
@@ -510,7 +507,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               fontSize={14}
               fontWeight={500}
               fill={readableText(centerColor)}
-              style={labelStyle(phase === 'family')}
+              style={labelStyle(centerFilled)}
             >
               {centerLabel}
             </text>

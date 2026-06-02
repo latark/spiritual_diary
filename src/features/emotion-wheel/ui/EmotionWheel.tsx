@@ -46,20 +46,6 @@ const FAMILY_DIM: Record<string, string> = {
   anger: 'brightness-[0.78] saturate-[0.72]',
 };
 
-// Цвет ореола центральной надписи — в тон АРТА семьи (не из данных: у страха арт голубой, у отвращения зелёный).
-const ART_HUE: Record<string, string> = {
-  joy: '#F0C04A',
-  love: '#E86A9A',
-  peace: '#AE8BE0',
-  interest: '#EE8C3C',
-  surprise: '#3FB6C9',
-  fear: '#4FA6E6',
-  sadness: '#5E84D8',
-  shame: '#B07AD8',
-  disgust: '#74C24A',
-  anger: '#D24A3E',
-};
-
 /** Стиль позиции по откалиброванной точке (центр подписи), % от размера колеса. */
 function posStyle(pt: Pt | undefined): CSSProperties {
   const p = pt ?? { x: 50, y: 50 };
@@ -227,7 +213,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                 aria-hidden
                 className="absolute top-1/2 left-1/2 h-[175%] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
                 style={{
-                  background: `radial-gradient(ellipse, ${ART_HUE[family.id] ?? family.color} 0%, transparent 72%)`,
+                  background: `radial-gradient(ellipse, ${family.color} 0%, transparent 72%)`,
                   opacity: 0.9,
                   filter: 'blur(5px)',
                 }}

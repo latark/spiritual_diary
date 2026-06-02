@@ -45,3 +45,6 @@ next-env.d.ts
 # project tooling
 .claude/local/
 .serena/cache/
+
+# Бэкап исходных артов колеса (локально, не в репозиторий)
+.wheel_orig_bak/

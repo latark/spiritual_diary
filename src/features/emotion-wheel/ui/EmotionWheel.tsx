@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import { EMOTION_FAMILIES, type EmotionFamily, type EmotionShade } from '@/shared/content/emotions';
 import { cn } from '@/shared/lib/cn';
@@ -12,18 +12,27 @@ import {
   radialLabelRotation,
   readableText,
 } from '../model/geometry';
+import { MOTION_PRESET } from '../model/motion-presets';
 import type { SelectedEmotion } from '../model/types';
 
 const VIEW = 360;
 const C = 180;
 const CENTER_R = 42; // чёткая сердцевина-круг, один размер в обоих видах
-const INNER = 52; // лепестки начинаются с зазором от сердцевины
-const OUTER = 150;
-const FAM_LABEL_R = 102;
-const CHILD_LABEL_R = 100;
+const INNER = 50; // лепестки начинаются с зазором от сердцевины
+const OUTER = 162; // удлинены — больше места для подписи внутри
+const LABEL_R = 106; // подпись в широкой части лепестка
 
-/** Переход «свет и растворение»: растворение (0.55s) + рост из размытия (задержка 0.3s + 0.6s). */
-const TRANSITION_MS = 920;
+/** Доступная радиальная длина для подписи (px). По ней подбираем размер шрифта. */
+const LABEL_USABLE = OUTER - INNER - 16;
+
+/** Подбор размера шрифта так, чтобы самое длинное слово в кольце поместилось по длине лепестка. */
+function fitFont(maxLen: number, base: number): number {
+  const fit = Math.floor(LABEL_USABLE / (maxLen * 0.58));
+  return Math.max(9, Math.min(base, fit));
+}
+
+/** Длительность смены уровня (мс) — после неё старое размонтируется. Свет на canvas живёт дольше сам. */
+const TRANSITION_MS = 360;
 
 const SHORT: Record<string, string> = {
   joy: 'Радость',
@@ -38,19 +47,51 @@ const SHORT: Record<string, string> = {
   anger: 'Гнев',
 };
 
-/** Золотые частицы света, дрейфующие к сердцевине во время перехода (детерминированы — SSR-safe). */
-const MOTES = Array.from({ length: 14 }, (_, i) => {
-  const ang = (i / 14) * Math.PI * 2 + (((i * 37) % 10) - 5) / 60;
-  const r = 94 + ((i * 53) % 30);
-  return {
-    dx: Math.round(r * Math.cos(ang) * 10) / 10,
-    dy: Math.round(r * Math.sin(ang) * 10) / 10,
-    rad: 1.5 + ((i * 17) % 3) * 0.5,
-    delay: ((i * 29) % 5) * 0.035,
-  };
-});
+const FAM_FONT = fitFont(Math.max(...Object.values(SHORT).map((s) => s.length)), 12);
 
 type Phase = 'overview' | 'toFamily' | 'family' | 'toOverview';
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+}
+
+// Генерация частиц — на уровне модуля (Math.random нельзя вызывать в теле компонента).
+function spawnParticles(): Particle[] {
+  const p = MOTION_PRESET;
+  const out: Particle[] = [];
+  for (let i = 0; i < p.moteCount; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const r = p.moteSpread * (0.7 + Math.random() * 0.35);
+    const x = C + r * Math.cos(ang);
+    const y = C + r * Math.sin(ang);
+    const maxLife = p.moteDurMs * (0.8 + Math.random() * 0.4);
+    const frames = maxLife / 16.67;
+    const tang = (Math.random() - 0.5) * 0.6;
+    out.push({
+      x,
+      y,
+      vx: (C - x) / frames - Math.sin(ang) * tang,
+      vy: (C - y) / frames + Math.cos(ang) * tang,
+      life: maxLife,
+      maxLife,
+      size: p.moteSize * (0.6 + Math.random() * 0.8),
+    });
+  }
+  return out;
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+}
 
 function buzz(ms = 8): void {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
@@ -65,18 +106,6 @@ function onActivateKey(e: KeyboardEvent, fn: () => void): void {
   }
 }
 
-/** Подписи проявляются чуть позже формы (из лёгкого размытия), исчезают быстро. */
-function labelStyle(visible: boolean): CSSProperties {
-  return {
-    opacity: visible ? 1 : 0,
-    filter: visible ? 'blur(0)' : 'blur(3px)',
-    transition: visible
-      ? 'opacity 0.4s ease 0.45s, filter 0.4s ease 0.45s'
-      : 'opacity 0.18s ease, filter 0.18s ease',
-    pointerEvents: 'none',
-  };
-}
-
 export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => void }) {
   const [phase, setPhase] = useState<Phase>('overview');
   const [family, setFamily] = useState<EmotionFamily | null>(null);
@@ -85,6 +114,112 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const [centerLabel, setCenterLabel] = useState('');
   const [transitionId, setTransitionId] = useState(0);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const igniteRef = useRef<{ t: number; dur: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastTsRef = useRef<number>(0);
+
+  function ensureCtx(): CanvasRenderingContext2D | null {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const cssW = canvas.clientWidth || VIEW;
+    const dpr = window.devicePixelRatio || 1;
+    const need = Math.max(1, Math.round(cssW * dpr));
+    if (canvas.width !== need) {
+      canvas.width = need;
+      canvas.height = need;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const s = (cssW / VIEW) * dpr;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    return ctx;
+  }
+
+  function loop(ts: number): void {
+    const ctx = ensureCtx();
+    if (!ctx) {
+      rafRef.current = null;
+      return;
+    }
+    const dt = lastTsRef.current ? ts - lastTsRef.current : 16.67;
+    lastTsRef.current = ts;
+    const p = MOTION_PRESET;
+
+    ctx.clearRect(0, 0, VIEW, VIEW);
+    ctx.globalCompositeOperation = 'lighter';
+
+    const ign = igniteRef.current;
+    if (ign) {
+      ign.t += dt;
+      const prog = Math.min(1, ign.t / ign.dur);
+      const a = Math.sin(prog * Math.PI) * p.igniteOpacity;
+      if (a > 0.001) {
+        const grad = ctx.createRadialGradient(C, C, 0, C, C, CENTER_R * 2.4);
+        grad.addColorStop(0, `rgba(244,228,166,${a})`);
+        grad.addColorStop(0.5, `rgba(231,207,122,${a * 0.5})`);
+        grad.addColorStop(1, 'rgba(231,207,122,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(C, C, CENTER_R * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (prog >= 1) igniteRef.current = null;
+    }
+
+    const alive: Particle[] = [];
+    const dtScale = dt / 16.67;
+    for (const pt of particlesRef.current) {
+      pt.x += pt.vx * dtScale;
+      pt.y += pt.vy * dtScale;
+      pt.life -= dt;
+      if (pt.life <= 0) continue;
+      const prog = 1 - pt.life / pt.maxLife;
+      const a = Math.sin(prog * Math.PI) * p.moteGlow;
+      if (a > 0.001) {
+        const rr = pt.size * 4;
+        const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, rr);
+        grad.addColorStop(0, `rgba(244,228,166,${a})`);
+        grad.addColorStop(0.4, `rgba(231,207,122,${a * 0.6})`);
+        grad.addColorStop(1, 'rgba(231,207,122,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, rr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      alive.push(pt);
+    }
+    particlesRef.current = alive;
+
+    if (alive.length > 0 || igniteRef.current) {
+      rafRef.current = requestAnimationFrame(loop);
+    } else {
+      ctx.clearRect(0, 0, VIEW, VIEW);
+      rafRef.current = null;
+    }
+  }
+
+  function fireLight(): void {
+    if (prefersReducedMotion()) return;
+    particlesRef.current = spawnParticles();
+    igniteRef.current = {
+      t: 0,
+      dur: Math.max(MOTION_PRESET.moteDurMs, MOTION_PRESET.materializeMs),
+    };
+    if (rafRef.current == null) {
+      lastTsRef.current = 0;
+      rafRef.current = requestAnimationFrame(loop);
+    }
+  }
+
+  // свет при каждом переходе
+  useEffect(() => {
+    if (transitionId > 0) fireLight();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transitionId]);
+
+  // фазовая машина
   useEffect(() => {
     if (phase === 'toFamily') {
       const t = setTimeout(() => setPhase('family'), TRANSITION_MS);
@@ -100,6 +235,12 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     }
     return undefined;
   }, [phase]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   function selectFamily(f: EmotionFamily): void {
     if (phase !== 'overview') return;
@@ -132,14 +273,10 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
 
   const overviewMounted = phase !== 'family';
   const familyMounted = phase !== 'overview';
-  const transitioning = phase === 'toFamily' || phase === 'toOverview';
+  const overviewPresent = phase === 'overview' || phase === 'toOverview';
+  const familyPresent = phase === 'family' || phase === 'toFamily';
   const centerFilled = phase === 'toFamily' || phase === 'family';
   const familyPetals = family;
-
-  const overviewClass =
-    phase === 'toFamily' ? 'petal-dissolve' : phase === 'toOverview' ? 'petal-materialize' : '';
-  const familyClass =
-    phase === 'toFamily' ? 'petal-materialize' : phase === 'toOverview' ? 'petal-dissolve' : '';
 
   const familyHeader = (phase === 'toFamily' || phase === 'family') && family;
   const title = familyHeader
@@ -148,6 +285,38 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const subtitle = familyHeader
     ? 'нажми, чтобы прочитать и выбрать'
     : 'нажми на подходящий лепесток';
+
+  const childFont = familyPetals
+    ? fitFont(Math.max(...familyPetals.shades.map((s) => s.name.length)), 11)
+    : 11;
+
+  // лепестки: только прозрачность (без размытия при maxBlur=0), быстрый кросс-фейд
+  function groupStyle(present: boolean): CSSProperties {
+    const p = MOTION_PRESET;
+    return {
+      opacity: present ? 1 : 0,
+      filter: present ? 'blur(0px)' : `blur(${p.maxBlur}px)`,
+      transition: present
+        ? `opacity ${p.materializeMs}ms ease ${p.materializeDelayMs}ms, filter ${p.materializeMs}ms ease`
+        : `opacity ${p.dissolveMs}ms ease, filter ${p.dissolveMs}ms ease`,
+      pointerEvents: present ? undefined : 'none',
+    };
+  }
+  // подписи проявляются чуть позже лепестков
+  function labelStyle(visible: boolean): CSSProperties {
+    const p = MOTION_PRESET;
+    return {
+      opacity: visible ? 1 : 0,
+      transition: visible
+        ? `opacity ${p.materializeMs}ms ease ${p.materializeMs}ms`
+        : `opacity 150ms ease`,
+      pointerEvents: 'none',
+    };
+  }
+  const centerStyle: CSSProperties = {
+    opacity: centerFilled ? 1 : 0,
+    transition: `opacity ${MOTION_PRESET.materializeMs}ms ease`,
+  };
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -168,219 +337,189 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         <p className="text-ink-muted mt-0.5 text-sm">{subtitle}</p>
       </div>
 
-      <svg
-        viewBox={`0 0 ${VIEW} ${VIEW}`}
-        width="100%"
-        role="img"
-        aria-label="Цветок эмоций"
-        style={{ maxWidth: 440, display: 'block', overflow: 'visible' }}
-      >
-        {/* Вспышка ядра: оно «впитывает свет» в момент перехода */}
-        {transitioning && (
-          <circle
-            key={`ignite-${transitionId}`}
-            cx={C}
-            cy={C}
-            r={66}
-            fill="#e7cf7a"
-            style={{
-              filter: 'blur(16px)',
-              animation: 'core-ignite 0.85s ease-out both',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
+      <div className="relative aspect-square w-full max-w-[440px]">
+        <svg
+          viewBox={`0 0 ${VIEW} ${VIEW}`}
+          className="absolute inset-0 h-full w-full"
+          role="img"
+          aria-label="Цветок эмоций"
+          style={{ overflow: 'visible' }}
+        >
+          {/* лепестки семей */}
+          {overviewMounted && (
+            <g style={groupStyle(overviewPresent)}>
+              {EMOTION_FAMILIES.map((f, i) => {
+                const ang = petalAngle(i, EMOTION_FAMILIES.length);
+                const d = petalPath(
+                  C,
+                  C,
+                  ang,
+                  INNER,
+                  OUTER,
+                  (2 * Math.PI) / EMOTION_FAMILIES.length,
+                );
+                return (
+                  <g
+                    key={f.id}
+                    className="petal-group"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={f.name}
+                    onClick={() => selectFamily(f)}
+                    onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
+                  >
+                    <path
+                      className="petal"
+                      d={d}
+                      fill={f.color}
+                      stroke="rgba(231,207,122,0.30)"
+                      strokeWidth={1}
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          )}
 
-        {/* Лепестки семей (растворяются / сгущаются; подписи — отдельным слоем) */}
-        {overviewMounted && (
-          <g className={overviewClass}>
-            {EMOTION_FAMILIES.map((f, i) => {
-              const ang = petalAngle(i, EMOTION_FAMILIES.length);
-              const d = petalPath(C, C, ang, INNER, OUTER, (2 * Math.PI) / EMOTION_FAMILIES.length);
-              return (
-                <g
-                  key={f.id}
-                  className="petal-group"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={f.name}
-                  onClick={() => selectFamily(f)}
-                  onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
-                >
-                  <path
-                    className="petal"
-                    d={d}
-                    fill={f.color}
-                    stroke="rgba(231,207,122,0.30)"
-                    strokeWidth={1}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        )}
-
-        {/* Лепестки оттенков выбранной семьи */}
-        {familyMounted && familyPetals && (
-          <g className={familyClass}>
-            {familyPetals.shades.map((s, i) => {
-              const ang = petalAngle(i, familyPetals.shades.length);
-              const d = petalPath(
-                C,
-                C,
-                ang,
-                INNER,
-                OUTER,
-                (2 * Math.PI) / familyPetals.shades.length,
-              );
-              const isSel = shade?.id === s.id;
-              return (
-                <g
-                  key={s.id}
-                  className="petal-group"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={s.name}
-                  onClick={() => {
-                    buzz(8);
-                    setShade(s);
-                  }}
-                  onKeyDown={(e) =>
-                    onActivateKey(e, () => {
+          {/* лепестки оттенков */}
+          {familyMounted && familyPetals && (
+            <g style={groupStyle(familyPresent)}>
+              {familyPetals.shades.map((s, i) => {
+                const ang = petalAngle(i, familyPetals.shades.length);
+                const d = petalPath(
+                  C,
+                  C,
+                  ang,
+                  INNER,
+                  OUTER,
+                  (2 * Math.PI) / familyPetals.shades.length,
+                );
+                const isSel = shade?.id === s.id;
+                return (
+                  <g
+                    key={s.id}
+                    className="petal-group"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={s.name}
+                    onClick={() => {
                       buzz(8);
                       setShade(s);
-                    })
-                  }
-                >
-                  <path
-                    className="petal"
-                    d={d}
-                    fill={s.color}
-                    stroke={isSel ? '#D4AF37' : 'rgba(231,207,122,0.30)'}
-                    strokeWidth={isSel ? 3 : 1}
-                    style={
-                      isSel ? { filter: 'drop-shadow(0 0 7px rgba(212,175,55,0.75))' } : undefined
+                    }}
+                    onKeyDown={(e) =>
+                      onActivateKey(e, () => {
+                        buzz(8);
+                        setShade(s);
+                      })
                     }
-                  />
-                </g>
-              );
-            })}
-          </g>
-        )}
+                  >
+                    <path
+                      className="petal"
+                      d={d}
+                      fill={s.color}
+                      stroke={isSel ? '#D4AF37' : 'rgba(231,207,122,0.30)'}
+                      strokeWidth={isSel ? 3 : 1}
+                      style={
+                        isSel ? { filter: 'drop-shadow(0 0 7px rgba(212,175,55,0.75))' } : undefined
+                      }
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          )}
 
-        {/* Золотые частицы света, дрейфующие в сердцевину */}
-        {transitioning && (
-          <g key={`motes-${transitionId}`} style={{ pointerEvents: 'none' }}>
-            {MOTES.map((m, i) => {
-              const st: Record<string, string> = {
-                '--dx': `${m.dx}px`,
-                '--dy': `${m.dy}px`,
-                animation: `mote 0.75s ease-out ${m.delay}s both`,
-              };
-              return (
-                <circle
-                  key={i}
-                  cx={C}
-                  cy={C}
-                  r={m.rad}
-                  fill="#e7cf7a"
-                  style={st as CSSProperties}
-                />
-              );
-            })}
-          </g>
-        )}
-
-        {/* Чёткая сердцевина-круг (всегда). Пустая — контур; затем плавно наливается цветом. */}
-        <circle
-          cx={C}
-          cy={C}
-          r={CENTER_R}
-          fill="none"
-          stroke="#e7cf7a"
-          strokeOpacity={0.55}
-          strokeWidth={2}
-          style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.18))' }}
-        />
-        {centerColor && (
+          {/* чёткая сердцевина-круг + плавная заливка цветом */}
           <circle
             cx={C}
             cy={C}
             r={CENTER_R}
-            fill={centerColor}
+            fill="none"
             stroke="#e7cf7a"
-            strokeOpacity={0.6}
+            strokeOpacity={0.55}
             strokeWidth={2}
-            opacity={centerFilled ? 1 : 0}
-            style={{
-              transition: 'opacity 0.6s ease 0.1s',
-              filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.32))',
-            }}
+            style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.18))' }}
           />
-        )}
+          {centerColor && (
+            <circle
+              cx={C}
+              cy={C}
+              r={CENTER_R}
+              fill={centerColor}
+              stroke="#e7cf7a"
+              strokeOpacity={0.6}
+              strokeWidth={2}
+              style={centerStyle}
+            />
+          )}
 
-        {/* Слой подписей: статичные позиции, проявляются чуть позже лепестков */}
-        {overviewMounted &&
-          EMOTION_FAMILIES.map((f, i) => {
-            const ang = petalAngle(i, EMOTION_FAMILIES.length);
-            const lp = pointAt(C, C, ang, FAM_LABEL_R);
-            return (
-              <text
-                key={`l-${f.id}`}
-                x={lp.x}
-                y={lp.y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={12}
-                fontWeight={500}
-                fill={readableText(f.color)}
-                transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                style={labelStyle(phase === 'overview')}
-              >
-                {SHORT[f.id] ?? f.name}
-              </text>
-            );
-          })}
+          {/* подписи семей */}
+          {overviewMounted &&
+            EMOTION_FAMILIES.map((f, i) => {
+              const ang = petalAngle(i, EMOTION_FAMILIES.length);
+              const lp = pointAt(C, C, ang, LABEL_R);
+              return (
+                <text
+                  key={`l-${f.id}`}
+                  x={lp.x}
+                  y={lp.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={FAM_FONT}
+                  fontWeight={500}
+                  fill={readableText(f.color)}
+                  transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
+                  style={labelStyle(phase === 'overview')}
+                >
+                  {SHORT[f.id] ?? f.name}
+                </text>
+              );
+            })}
 
-        {familyMounted &&
-          familyPetals &&
-          familyPetals.shades.map((s, i) => {
-            const ang = petalAngle(i, familyPetals.shades.length);
-            const lp = pointAt(C, C, ang, CHILD_LABEL_R);
-            return (
-              <text
-                key={`l-${s.id}`}
-                x={lp.x}
-                y={lp.y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={11}
-                fontWeight={500}
-                fill={readableText(s.color)}
-                transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
-                style={labelStyle(phase === 'family')}
-              >
-                {s.name}
-              </text>
-            );
-          })}
+          {/* подписи оттенков */}
+          {familyMounted &&
+            familyPetals &&
+            familyPetals.shades.map((s, i) => {
+              const ang = petalAngle(i, familyPetals.shades.length);
+              const lp = pointAt(C, C, ang, LABEL_R);
+              return (
+                <text
+                  key={`l-${s.id}`}
+                  x={lp.x}
+                  y={lp.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={childFont}
+                  fontWeight={500}
+                  fill={readableText(s.color)}
+                  transform={`rotate(${radialLabelRotation(ang)} ${lp.x} ${lp.y})`}
+                  style={labelStyle(phase === 'family')}
+                >
+                  {s.name}
+                </text>
+              );
+            })}
 
-        {/* Подпись семьи в сердцевине — после заливки */}
-        {centerColor && (
-          <text
-            x={C}
-            y={C}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={14}
-            fontWeight={500}
-            fill={readableText(centerColor)}
-            style={labelStyle(phase === 'family')}
-          >
-            {centerLabel}
-          </text>
-        )}
-      </svg>
+          {/* подпись семьи в сердцевине */}
+          {centerColor && (
+            <text
+              x={C}
+              y={C}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={14}
+              fontWeight={500}
+              fill={readableText(centerColor)}
+              style={labelStyle(phase === 'family')}
+            >
+              {centerLabel}
+            </text>
+          )}
+        </svg>
+
+        {/* canvas-слой света поверх (клики проходят сквозь) */}
+        <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
+      </div>
 
       {phase === 'family' && shade && (
         <div className="animate-fade-up bg-surface-raised w-full max-w-md rounded-lg p-4">

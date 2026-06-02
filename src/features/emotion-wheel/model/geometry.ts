@@ -19,7 +19,7 @@ function smoothstep(t: number): number {
  * Держим полную ширину (соприкосновение) до plateau, затем плавно сужаем почти к нулю.
  */
 function halfAngleAt(t: number, hmax: number): number {
-  const plateau = 0.42;
+  const plateau = 0.5;
   if (t <= plateau) return hmax;
   const u = (t - plateau) / (1 - plateau);
   return hmax * (1 - smoothstep(u));

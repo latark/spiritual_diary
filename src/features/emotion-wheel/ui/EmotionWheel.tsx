@@ -16,14 +16,13 @@ import type { SelectedEmotion } from '../model/types';
 
 const VIEW = 360;
 const C = 180;
-const INNER = 32;
+const INNER = 46; // лепестки начинаются от края центрального круга → открытое ядро
 const OUTER = 150;
-const FAM_LABEL_R = 96;
-const CHILD_LABEL_R = 92;
-const HUB_R = 26;
-const FAM_CIRCLE_R = 46;
+const FAM_LABEL_R = 98;
+const CHILD_LABEL_R = 96;
+const CENTER_R = 46; // один размер центра и в общем виде, и в раскрытом
 
-/** Длительность перехода между уровнями (мс). Чуть больше .fl-grow в globals.css. */
+/** Длительность перехода уровней (мс). Чуть больше .fl-grow в globals.css. */
 const TRANSITION_MS = 1040;
 
 /** Короткие подписи семей для лепестков (полные имена слишком длинные). */
@@ -59,6 +58,10 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const [phase, setPhase] = useState<Phase>('overview');
   const [family, setFamily] = useState<EmotionFamily | null>(null);
   const [shade, setShade] = useState<EmotionShade | null>(null);
+  // Цвет/подпись центра живут отдельно от петель: центр статичен, меняется только прозрачность.
+  // Значения сохраняются и во время угасания (не обнуляем на возврате).
+  const [centerColor, setCenterColor] = useState<string | null>(null);
+  const [centerLabel, setCenterLabel] = useState('');
 
   useEffect(() => {
     if (phase === 'toFamily') {
@@ -81,6 +84,8 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     buzz(10);
     setFamily(f);
     setShade(null);
+    setCenterColor(f.color);
+    setCenterLabel(SHORT[f.id] ?? f.name);
     setPhase('toFamily');
   }
 
@@ -101,9 +106,9 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     });
   }
 
-  // Старый и новый уровни сосуществуют во время перехода: один угасает, другой одновременно прорастает.
   const overviewMounted = phase !== 'family';
   const familyMounted = phase !== 'overview';
+  const centerFilled = phase === 'toFamily' || phase === 'family';
 
   const familyHeader = (phase === 'toFamily' || phase === 'family') && family;
   const title = familyHeader
@@ -112,6 +117,8 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const subtitle = familyHeader
     ? 'нажми, чтобы прочитать и выбрать'
     : 'нажми на подходящий лепесток';
+
+  const centerTransition = 'opacity 0.7s cubic-bezier(0.37, 0, 0.63, 1)';
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -139,17 +146,6 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         aria-label="Цветок эмоций"
         style={{ maxWidth: 440, display: 'block', overflow: 'visible' }}
       >
-        {/* Центральная сердцевина (всегда, нижний слой) */}
-        <circle
-          cx={C}
-          cy={C}
-          r={HUB_R}
-          fill="#221b3d"
-          stroke="rgba(231,207,122,0.35)"
-          strokeWidth={1}
-          style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.25))' }}
-        />
-
         {/* Уровень семей */}
         {overviewMounted && (
           <g className={phase === 'toFamily' ? 'fl-fall' : 'fl-grow'}>
@@ -194,7 +190,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
           </g>
         )}
 
-        {/* Уровень оттенков выбранной семьи (+ центр-семья) */}
+        {/* Уровень оттенков выбранной семьи */}
         {familyMounted && family && (
           <g className={phase === 'toOverview' ? 'fl-fall' : 'fl-grow'}>
             {family.shades.map((s, i) => {
@@ -246,14 +242,33 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
                 </g>
               );
             })}
+          </g>
+        )}
+
+        {/* Статичный центр: пустое ядро + плавная заливка цветом/подписью семьи */}
+        <circle
+          cx={C}
+          cy={C}
+          r={CENTER_R}
+          fill="none"
+          stroke="rgba(231,207,122,0.28)"
+          strokeWidth={1}
+          style={{ filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.18))' }}
+        />
+        {centerColor && (
+          <>
             <circle
               cx={C}
               cy={C}
-              r={FAM_CIRCLE_R}
-              fill={family.color}
+              r={CENTER_R}
+              fill={centerColor}
               stroke="rgba(231,207,122,0.5)"
               strokeWidth={1.5}
-              style={{ filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.35))' }}
+              opacity={centerFilled ? 1 : 0}
+              style={{
+                transition: centerTransition,
+                filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.35))',
+              }}
             />
             <text
               x={C}
@@ -262,12 +277,13 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               dominantBaseline="central"
               fontSize={14}
               fontWeight={500}
-              fill={readableText(family.color)}
-              style={{ pointerEvents: 'none' }}
+              fill={readableText(centerColor)}
+              opacity={centerFilled ? 1 : 0}
+              style={{ transition: centerTransition, pointerEvents: 'none' }}
             >
-              {SHORT[family.id] ?? family.name}
+              {centerLabel}
             </text>
-          </g>
+          </>
         )}
       </svg>
 

@@ -49,6 +49,7 @@
   --animate-breathe: breathe 10s var(--ease-gentle) infinite; /* дыхание 5-5 */
   --animate-glow: glow 5s var(--ease-gentle) infinite; /* пульс главной кнопки */
   --animate-fade-up: fade-up 0.25s var(--ease-gentle) both; /* появление контента */
+  --animate-wheel-in: wheel-in 0.32s var(--ease-gentle) both; /* смена колеса семья/оттенки */
 }
 
 /* Шрифты подключаются через next/font (см. shared/config/fonts.ts),
@@ -88,6 +89,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes wheel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

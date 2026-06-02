@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { AmbientCosmos } from '@/shared/ui/AmbientCosmos';
+
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -12,6 +14,7 @@ import { Topbar } from './Topbar';
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh">
+      <AmbientCosmos />
       <Sidebar />
       <div className="flex min-h-dvh flex-1 flex-col md:pl-60">
         <Topbar />

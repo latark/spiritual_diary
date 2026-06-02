@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Sparkles, TrendingUp, User, type LucideIcon } from 'lucide-react';
+import { Home, CalendarDays, Sparkles, Compass, User, type LucideIcon } from 'lucide-react';
 
 export const ROUTES = {
   home: '/',
@@ -20,11 +20,11 @@ export interface NavItem {
   primary?: boolean;
 }
 
-/** Порядок как в таб-баре: Главная · Календарь · Записать · Прогресс · Я */
+/** Порядок как в таб-баре: Синтез · Память · Действие · Путь · Я */
 export const NAV_ITEMS: NavItem[] = [
-  { href: ROUTES.home, label: 'Главная', icon: Home },
-  { href: ROUTES.calendar, label: 'Календарь', icon: CalendarDays },
-  { href: ROUTES.record, label: 'Записать', icon: Sparkles, primary: true },
-  { href: ROUTES.progress, label: 'Прогресс', icon: TrendingUp },
+  { href: ROUTES.home, label: 'Синтез', icon: Home },
+  { href: ROUTES.calendar, label: 'Память', icon: CalendarDays },
+  { href: ROUTES.record, label: 'Действие', icon: Sparkles, primary: true },
+  { href: ROUTES.progress, label: 'Путь', icon: Compass },
   { href: ROUTES.profile, label: 'Я', icon: User },
 ];

@@ -95,7 +95,7 @@ export function CauseStep({
           type="button"
           onClick={submit}
           disabled={!canContinue}
-          className="bg-gold text-canvas enabled:hover:shadow-glow h-11 rounded-lg px-6 font-medium transition-shadow duration-300 disabled:opacity-40"
+          className="bg-surface-raised text-ink ring-gold/40 enabled:hover:ring-gold enabled:hover:shadow-glow-soft h-11 rounded-lg px-6 font-medium ring-1 transition-all duration-300 disabled:opacity-40 disabled:ring-transparent"
         >
           Далее
         </button>

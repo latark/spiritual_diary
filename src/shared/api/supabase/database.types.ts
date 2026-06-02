@@ -56,6 +56,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      light_body_state: {
+        Row: {
+          points: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          points?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          points?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           base_vibration: number | null;
@@ -121,7 +139,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      add_light_point: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;

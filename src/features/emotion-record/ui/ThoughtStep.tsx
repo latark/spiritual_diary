@@ -7,40 +7,54 @@ import type { LifeSphereId } from '@/shared/content/life-spheres';
 import { detectCrisis } from '@/shared/safety';
 import { cn } from '@/shared/lib/cn';
 
+import type { Valence } from '../model/valence';
+
 export interface ThoughtValue {
   thoughtId: number | null;
   custom: string;
 }
 
 export function ThoughtStep({
+  valence,
   familyId,
   sphereId,
   onSubmit,
   onBack,
   onCrisis,
 }: {
+  valence: Valence;
   familyId: string;
   sphereId: LifeSphereId | null;
   onSubmit: (value: ThoughtValue) => void;
   onBack: () => void;
   onCrisis: () => void;
 }) {
+  const isPositive = valence === 'positive';
+
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [custom, setCustom] = useState('');
   const [showAll, setShowAll] = useState(false);
 
   const { primary, all } = useMemo(() => {
+    const emotionsOf = (t: (typeof BACKGROUND_THOUGHTS)[number]) =>
+      isPositive ? t.positiveEmotions : t.negativeEmotions;
+
     const emotionFirst = (arr: typeof BACKGROUND_THOUGHTS) =>
       [...arr].sort(
         (a, b) =>
-          Number(b.negativeEmotions.includes(familyId)) -
-          Number(a.negativeEmotions.includes(familyId)),
+          Number(emotionsOf(b).includes(familyId)) - Number(emotionsOf(a).includes(familyId)),
       );
+
+    // В позитивном потоке показываем переустановки (positive есть у всех записей).
+    // В негативном — только записи с непустым negative-текстом.
+    const pool = isPositive ? BACKGROUND_THOUGHTS : BACKGROUND_THOUGHTS.filter((t) => t.negative);
+
     const base = sphereId
-      ? BACKGROUND_THOUGHTS.filter((t) => t.sphere === sphereId)
-      : BACKGROUND_THOUGHTS.filter((t) => t.negativeEmotions.includes(familyId));
-    return { primary: emotionFirst(base), all: emotionFirst(BACKGROUND_THOUGHTS) };
-  }, [familyId, sphereId]);
+      ? pool.filter((t) => t.sphere === sphereId)
+      : pool.filter((t) => emotionsOf(t).includes(familyId));
+
+    return { primary: emotionFirst(base), all: emotionFirst(pool) };
+  }, [familyId, sphereId, isPositive]);
 
   const list = showAll || primary.length === 0 ? all : primary;
   const canContinue = selectedId !== null || custom.trim().length > 0;
@@ -61,9 +75,13 @@ export function ThoughtStep({
   return (
     <div className="animate-fade-up flex w-full flex-col items-center gap-4">
       <div className="text-center">
-        <h2 className="font-display text-ink text-2xl">Какая мысль сейчас фоном?</h2>
+        <h2 className="font-display text-ink text-2xl">
+          {isPositive ? 'Какая светлая мысль за этим стоит?' : 'Какая мысль сейчас фоном?'}
+        </h2>
         <p className="text-ink-muted mt-1 text-sm">
-          часто за чувством стоит привычная установка — выбери близкую
+          {isPositive
+            ? 'выбери близкое убеждение — и дай ему окрепнуть'
+            : 'часто за чувством стоит привычная установка — выбери близкую'}
         </p>
       </div>
 
@@ -85,7 +103,7 @@ export function ThoughtStep({
                   : 'bg-surface-raised/60 text-ink-muted hover:text-ink',
               )}
             >
-              {t.negative}
+              {isPositive ? t.positive : t.negative}
             </button>
           );
         })}
@@ -97,7 +115,7 @@ export function ThoughtStep({
           onClick={() => setShowAll(true)}
           className="text-ink-muted hover:text-gold text-sm underline-offset-4 transition-colors duration-200"
         >
-          показать все установки
+          {isPositive ? 'показать все убеждения' : 'показать все установки'}
         </button>
       )}
 
@@ -109,7 +127,7 @@ export function ThoughtStep({
             setCustom(e.target.value);
             if (e.target.value) setSelectedId(null);
           }}
-          placeholder="или своя мысль…"
+          placeholder={isPositive ? 'или свои слова…' : 'или своя мысль…'}
           maxLength={300}
           className="bg-surface-raised text-ink placeholder:text-ink-muted/60 focus:ring-gold/50 w-full rounded-lg px-4 py-3 text-sm focus:ring-1 focus:outline-none"
         />
@@ -134,7 +152,7 @@ export function ThoughtStep({
           type="button"
           onClick={submit}
           disabled={!canContinue}
-          className="bg-gold text-canvas enabled:hover:shadow-glow h-11 rounded-lg px-6 font-medium transition-shadow duration-300 disabled:opacity-40"
+          className="bg-surface-raised text-ink ring-gold/40 enabled:hover:ring-gold enabled:hover:shadow-glow-soft h-11 rounded-lg px-6 font-medium ring-1 transition-all duration-300 disabled:opacity-40 disabled:ring-transparent"
         >
           Далее
         </button>

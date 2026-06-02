@@ -2,17 +2,22 @@
 
 import { useState } from 'react';
 
+import { BACKGROUND_THOUGHTS } from '@/shared/content/background-thoughts';
 import type { LifeSphereId } from '@/shared/content/life-spheres';
+import { BreathingExercise } from '@/shared/ui/BreathingExercise';
 
 import { BodyMap } from './BodyMap';
 import { CauseStep, type CauseValue } from './CauseStep';
+import { CompletionStep } from './CompletionStep';
 import { CrisisSupport } from './CrisisSupport';
 import { IntensityStep } from './IntensityStep';
 import { ThoughtStep, type ThoughtValue } from './ThoughtStep';
+import type { EmotionEntryInput } from '../model/entry-schema';
+import { saveEmotionEntryAction } from '../model/save-action';
 import { familyValence } from '../model/valence';
 import type { RecordEmotion } from '../model/types';
 
-type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'done';
+type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'breathing' | 'done';
 
 interface Draft {
   intensity: number | null;
@@ -46,11 +51,11 @@ function EmotionChip({ emotion }: { emotion: RecordEmotion }) {
 
 export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onReset: () => void }) {
   const valence = familyValence(emotion.familyId);
-  const isNegative = valence === 'negative';
 
   const [step, setStep] = useState<Step>('intensity');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [crisis, setCrisis] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   if (crisis) {
     return <CrisisSupport onBack={() => setCrisis(false)} />;
@@ -63,13 +68,52 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
 
   function submitCause(v: CauseValue): void {
     setDraft((d) => ({ ...d, causeSphere: v.sphereId, causeCustom: v.custom }));
-    setStep(isNegative ? 'thought' : 'body');
+    setStep('thought');
   }
 
   function submitThought(v: ThoughtValue): void {
     setDraft((d) => ({ ...d, thoughtId: v.thoughtId, thoughtCustom: v.custom }));
     setStep('body');
   }
+
+  function buildInput(): EmotionEntryInput {
+    return {
+      familyId: emotion.familyId,
+      shadeId: emotion.shadeId,
+      emotionName: emotion.name,
+      emotionColor: emotion.color,
+      intensity: draft.intensity ?? 1,
+      causeSphere: draft.causeSphere,
+      causeCustom: draft.causeCustom,
+      thoughtId: draft.thoughtId,
+      thoughtCustom: draft.thoughtCustom,
+      bodyZones: draft.bodyZones,
+    };
+  }
+
+  function runSave(): void {
+    setSaveStatus('saving');
+    void saveEmotionEntryAction(buildInput()).then((r) =>
+      setSaveStatus('ok' in r ? 'saved' : 'error'),
+    );
+  }
+
+  function finishRecord(): void {
+    setStep('done');
+    runSave();
+  }
+
+  function resetAll(): void {
+    setDraft(EMPTY);
+    setSaveStatus('idle');
+    setStep('intensity');
+    onReset();
+  }
+
+  const affirmation =
+    draft.thoughtId != null
+      ? (BACKGROUND_THOUGHTS.find((t) => t.id === draft.thoughtId)?.positive ?? null)
+      : null;
 
   return (
     <div className="flex flex-col items-center gap-5 pt-2">
@@ -89,6 +133,7 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
 
       {step === 'thought' && (
         <ThoughtStep
+          valence={valence}
           familyId={emotion.familyId}
           sphereId={draft.causeSphere}
           onSubmit={submitThought}
@@ -113,15 +158,15 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setStep(isNegative ? 'thought' : 'cause')}
+              onClick={() => setStep('thought')}
               className="text-ink-muted hover:text-gold rounded-full px-4 py-2 text-sm transition-colors duration-200"
             >
               ← назад
             </button>
             <button
               type="button"
-              onClick={() => setStep('done')}
-              className="bg-gold text-canvas hover:shadow-glow h-11 rounded-lg px-6 font-medium transition-shadow duration-300"
+              onClick={() => setStep('breathing')}
+              className="bg-surface-raised text-ink ring-gold/40 hover:ring-gold hover:shadow-glow-soft h-11 rounded-lg px-6 font-medium ring-1 transition-all duration-300"
             >
               Далее
             </button>
@@ -129,23 +174,24 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
         </div>
       )}
 
+      {step === 'breathing' && (
+        <BreathingExercise
+          mode={valence === 'negative' ? 'release' : 'amplify'}
+          title={valence === 'negative' ? 'Отпусти на выдохе' : 'Дай этому свету расти'}
+          subtitle="Подыши вместе с кругом: вдох, задержка, выдох, задержка."
+          skipLabel="Пропустить"
+          doneLabel="Завершить"
+          onFinish={finishRecord}
+        />
+      )}
+
       {step === 'done' && (
-        <div className="animate-fade-up flex flex-col items-center gap-4 pt-6 text-center">
-          <p className="text-ink-muted max-w-sm text-sm">
-            Дальше — дыхательная практика и сохранение записи. Эти шаги добавим следующими.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(EMPTY);
-              setStep('intensity');
-              onReset();
-            }}
-            className="text-ink-muted hover:text-gold rounded-full px-4 py-2 text-sm transition-colors duration-200"
-          >
-            записать заново
-          </button>
-        </div>
+        <CompletionStep
+          status={saveStatus === 'idle' ? 'saving' : saveStatus}
+          affirmation={affirmation}
+          onRetry={runSave}
+          onReset={resetAll}
+        />
       )}
     </div>
   );

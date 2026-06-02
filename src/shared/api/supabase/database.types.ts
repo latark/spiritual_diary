@@ -8,6 +8,45 @@ export type Database = {
   };
   public: {
     Tables: {
+      emotion_entries: {
+        Row: {
+          body_zones: string[];
+          cause_type: string | null;
+          created_at: string;
+          emotion_color: string;
+          emotion_name: string;
+          family_id: string;
+          id: string;
+          intensity: number;
+          shade_id: string;
+          user_id: string;
+        };
+        Insert: {
+          body_zones?: string[];
+          cause_type?: string | null;
+          created_at?: string;
+          emotion_color: string;
+          emotion_name: string;
+          family_id: string;
+          id?: string;
+          intensity: number;
+          shade_id: string;
+          user_id: string;
+        };
+        Update: {
+          body_zones?: string[];
+          cause_type?: string | null;
+          created_at?: string;
+          emotion_color?: string;
+          emotion_name?: string;
+          family_id?: string;
+          id?: string;
+          intensity?: number;
+          shade_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           base_vibration: number | null;

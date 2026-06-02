@@ -59,7 +59,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
 
   useEffect(() => {
     if (phase === 'leaving') {
-      const t = setTimeout(() => setPhase('family'), 470);
+      const t = setTimeout(() => setPhase('family'), 200);
       return () => clearTimeout(t);
     }
     if (phase === 'returning') {
@@ -67,7 +67,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         setFamily(null);
         setShade(null);
         setPhase('overview');
-      }, 450);
+      }, 200);
       return () => clearTimeout(t);
     }
     return undefined;

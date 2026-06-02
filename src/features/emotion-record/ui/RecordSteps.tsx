@@ -7,13 +7,15 @@ import type { LifeSphereId } from '@/shared/content/life-spheres';
 import { BodyMap } from './BodyMap';
 import { CauseStep, type CauseValue } from './CauseStep';
 import { CrisisSupport } from './CrisisSupport';
+import { IntensityStep } from './IntensityStep';
 import { ThoughtStep, type ThoughtValue } from './ThoughtStep';
 import { familyValence } from '../model/valence';
 import type { RecordEmotion } from '../model/types';
 
-type Step = 'cause' | 'thought' | 'body' | 'done';
+type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'done';
 
 interface Draft {
+  intensity: number | null;
   causeSphere: LifeSphereId | null;
   causeCustom: string;
   thoughtId: number | null;
@@ -22,6 +24,7 @@ interface Draft {
 }
 
 const EMPTY: Draft = {
+  intensity: null,
   causeSphere: null,
   causeCustom: '',
   thoughtId: null,
@@ -45,12 +48,17 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
   const valence = familyValence(emotion.familyId);
   const isNegative = valence === 'negative';
 
-  const [step, setStep] = useState<Step>('cause');
+  const [step, setStep] = useState<Step>('intensity');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [crisis, setCrisis] = useState(false);
 
   if (crisis) {
     return <CrisisSupport onBack={() => setCrisis(false)} />;
+  }
+
+  function submitIntensity(level: number): void {
+    setDraft((d) => ({ ...d, intensity: level }));
+    setStep('cause');
   }
 
   function submitCause(v: CauseValue): void {
@@ -67,8 +75,16 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
     <div className="flex flex-col items-center gap-5 pt-2">
       <EmotionChip emotion={emotion} />
 
+      {step === 'intensity' && (
+        <IntensityStep color={emotion.color} onSubmit={submitIntensity} onBack={onReset} />
+      )}
+
       {step === 'cause' && (
-        <CauseStep onSubmit={submitCause} onBack={onReset} onCrisis={() => setCrisis(true)} />
+        <CauseStep
+          onSubmit={submitCause}
+          onBack={() => setStep('intensity')}
+          onCrisis={() => setCrisis(true)}
+        />
       )}
 
       {step === 'thought' && (
@@ -122,7 +138,7 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
             type="button"
             onClick={() => {
               setDraft(EMPTY);
-              setStep('cause');
+              setStep('intensity');
               onReset();
             }}
             className="text-ink-muted hover:text-gold rounded-full px-4 py-2 text-sm transition-colors duration-200"

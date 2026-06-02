@@ -1,0 +1,136 @@
+'use client';
+
+import { useState } from 'react';
+
+import type { LifeSphereId } from '@/shared/content/life-spheres';
+
+import { BodyMap } from './BodyMap';
+import { CauseStep, type CauseValue } from './CauseStep';
+import { CrisisSupport } from './CrisisSupport';
+import { ThoughtStep, type ThoughtValue } from './ThoughtStep';
+import { familyValence } from '../model/valence';
+import type { RecordEmotion } from '../model/types';
+
+type Step = 'cause' | 'thought' | 'body' | 'done';
+
+interface Draft {
+  causeSphere: LifeSphereId | null;
+  causeCustom: string;
+  thoughtId: number | null;
+  thoughtCustom: string;
+  bodyZones: string[];
+}
+
+const EMPTY: Draft = {
+  causeSphere: null,
+  causeCustom: '',
+  thoughtId: null,
+  thoughtCustom: '',
+  bodyZones: [],
+};
+
+function EmotionChip({ emotion }: { emotion: RecordEmotion }) {
+  return (
+    <div className="flex items-center justify-center gap-2.5">
+      <span
+        className="inline-block size-3.5 rounded-full"
+        style={{ backgroundColor: emotion.color, boxShadow: `0 0 12px -2px ${emotion.color}` }}
+      />
+      <span className="font-display text-ink text-lg">{emotion.name}</span>
+    </div>
+  );
+}
+
+export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onReset: () => void }) {
+  const valence = familyValence(emotion.familyId);
+  const isNegative = valence === 'negative';
+
+  const [step, setStep] = useState<Step>('cause');
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [crisis, setCrisis] = useState(false);
+
+  if (crisis) {
+    return <CrisisSupport onBack={() => setCrisis(false)} />;
+  }
+
+  function submitCause(v: CauseValue): void {
+    setDraft((d) => ({ ...d, causeSphere: v.sphereId, causeCustom: v.custom }));
+    setStep(isNegative ? 'thought' : 'body');
+  }
+
+  function submitThought(v: ThoughtValue): void {
+    setDraft((d) => ({ ...d, thoughtId: v.thoughtId, thoughtCustom: v.custom }));
+    setStep('body');
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-5 pt-2">
+      <EmotionChip emotion={emotion} />
+
+      {step === 'cause' && (
+        <CauseStep onSubmit={submitCause} onBack={onReset} onCrisis={() => setCrisis(true)} />
+      )}
+
+      {step === 'thought' && (
+        <ThoughtStep
+          familyId={emotion.familyId}
+          sphereId={draft.causeSphere}
+          onSubmit={submitThought}
+          onBack={() => setStep('cause')}
+          onCrisis={() => setCrisis(true)}
+        />
+      )}
+
+      {step === 'body' && (
+        <div className="animate-fade-up flex flex-col items-center gap-5">
+          <div className="text-center">
+            <h2 className="font-display text-ink text-2xl">Где это откликается в теле?</h2>
+            <p className="text-ink-muted mt-1 text-sm">можно выбрать несколько мест</p>
+          </div>
+
+          <BodyMap
+            valence={valence}
+            value={draft.bodyZones}
+            onChange={(zones) => setDraft((d) => ({ ...d, bodyZones: zones }))}
+          />
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setStep(isNegative ? 'thought' : 'cause')}
+              className="text-ink-muted hover:text-gold rounded-full px-4 py-2 text-sm transition-colors duration-200"
+            >
+              ← назад
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep('done')}
+              className="bg-gold text-canvas hover:shadow-glow h-11 rounded-lg px-6 font-medium transition-shadow duration-300"
+            >
+              Далее
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="animate-fade-up flex flex-col items-center gap-4 pt-6 text-center">
+          <p className="text-ink-muted max-w-sm text-sm">
+            Дальше — дыхательная практика и сохранение записи. Эти шаги добавим следующими.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(EMPTY);
+              setStep('cause');
+              onReset();
+            }}
+            className="text-ink-muted hover:text-gold rounded-full px-4 py-2 text-sm transition-colors duration-200"
+          >
+            записать заново
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

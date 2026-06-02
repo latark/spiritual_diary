@@ -10,8 +10,11 @@ export type Database = {
     Tables: {
       emotion_entries: {
         Row: {
+          background_thought_custom: string | null;
+          background_thought_id: number | null;
           body_zones: string[];
-          cause_type: string | null;
+          cause_custom: string | null;
+          cause_sphere: string | null;
           created_at: string;
           emotion_color: string;
           emotion_name: string;
@@ -22,8 +25,11 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          background_thought_custom?: string | null;
+          background_thought_id?: number | null;
           body_zones?: string[];
-          cause_type?: string | null;
+          cause_custom?: string | null;
+          cause_sphere?: string | null;
           created_at?: string;
           emotion_color: string;
           emotion_name: string;
@@ -34,8 +40,11 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          background_thought_custom?: string | null;
+          background_thought_id?: number | null;
           body_zones?: string[];
-          cause_type?: string | null;
+          cause_custom?: string | null;
+          cause_sphere?: string | null;
           created_at?: string;
           emotion_color?: string;
           emotion_name?: string;

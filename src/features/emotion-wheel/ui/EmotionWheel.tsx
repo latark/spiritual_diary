@@ -102,12 +102,18 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
       ...EMOTION_FAMILIES.map((f) => `/wheel-v6/family/${f.id}.png`),
     ];
     let alive = true;
+    const mark = (s: string) => {
+      if (alive) setReadySrcs((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
+    };
     for (const s of list) {
       const img = new Image();
-      img.onload = () => {
-        if (alive) setReadySrcs((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
-      };
+      img.decoding = 'async';
       img.src = s;
+      // decode() гарантирует готовность битмапа к отрисовке — фон не «доедет» позже подписей.
+      img
+        .decode()
+        .then(() => mark(s))
+        .catch(() => mark(s));
     }
     return () => {
       alive = false;
@@ -158,7 +164,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
         {/* Анимируемый слой: при смене семья/общее колесо переигрывается плавное появление. */}
         <div
           key={(family?.id ?? 'overview') + (ready ? '' : '-loading')}
-          className={cn('absolute inset-0', ready && 'animate-wheel-in')}
+          className="absolute inset-0"
         >
           {!ready && (
             // Пока арт не загружен — мягкая пульсация; подписи не показываем (иначе диссонанс).
@@ -178,96 +184,102 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               <div
                 aria-hidden
                 className={cn(
-                  'pointer-events-none absolute inset-0 bg-contain bg-center bg-no-repeat select-none',
+                  'animate-wheel-in pointer-events-none absolute inset-0 bg-contain bg-center bg-no-repeat select-none',
                   // Дочерние цветы ярче/неоновее — приглушаем, чтобы не били в глаза.
                   family && (FAMILY_DIM[family.id] ?? DIM_DEFAULT),
                 )}
                 style={{ backgroundImage: `url(${artSrc})` }}
               />
 
-              {/* Подписи семей (общее колесо) */}
-              {!family &&
-                OVERVIEW_ORDER.map((id) => {
-                  const f = byId(id);
-                  if (!f) return null;
-                  const pos = posStyle(OVERVIEW_POS[id]);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-label={SHORT[id] ?? f.name}
-                      onClick={() => selectFamily(f)}
-                      onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
-                      style={pos}
-                      className="group absolute flex w-[26%] items-center justify-center"
-                    >
-                      <HoverGlow />
-                      <span className={cn(LABEL_OVERVIEW, 'text-[13px] sm:text-[15px]')}>
-                        {SHORT[id] ?? f.name}
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* Подписи появляются чуть позже арта (задержка), чтобы арт всегда был виден первым. */}
+              <div
+                className="animate-wheel-in absolute inset-0"
+                style={{ animationDelay: '0.16s' }}
+              >
+                {/* Подписи семей (общее колесо) */}
+                {!family &&
+                  OVERVIEW_ORDER.map((id) => {
+                    const f = byId(id);
+                    if (!f) return null;
+                    const pos = posStyle(OVERVIEW_POS[id]);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-label={SHORT[id] ?? f.name}
+                        onClick={() => selectFamily(f)}
+                        onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
+                        style={pos}
+                        className="group absolute flex w-[26%] items-center justify-center py-5"
+                      >
+                        <HoverGlow />
+                        <span className={cn(LABEL_OVERVIEW, 'text-[13px] sm:text-[15px]')}>
+                          {SHORT[id] ?? f.name}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-              {/* Подписи оттенков (экран семьи) */}
-              {family &&
-                family.shades.map((s) => {
-                  const pos = posStyle(FAMILY_POS[family.id]?.[s.id]);
-                  const isSel = shade?.id === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      aria-label={s.name}
-                      onClick={() => {
-                        buzz(8);
-                        setShade(s);
-                      }}
-                      onKeyDown={(e) =>
-                        onActivateKey(e, () => {
+                {/* Подписи оттенков (экран семьи) */}
+                {family &&
+                  family.shades.map((s) => {
+                    const pos = posStyle(FAMILY_POS[family.id]?.[s.id]);
+                    const isSel = shade?.id === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        aria-label={s.name}
+                        onClick={() => {
                           buzz(8);
                           setShade(s);
-                        })
-                      }
-                      style={pos}
-                      className="group absolute inline-flex items-center justify-center whitespace-nowrap"
-                    >
-                      <span
-                        className={cn(
-                          LABEL_SHADE,
-                          'text-[12px] sm:text-sm',
-                          isSel && 'text-gold-soft',
-                        )}
+                        }}
+                        onKeyDown={(e) =>
+                          onActivateKey(e, () => {
+                            buzz(8);
+                            setShade(s);
+                          })
+                        }
+                        style={pos}
+                        className="group absolute inline-flex items-center justify-center px-4 py-3.5 whitespace-nowrap"
                       >
-                        {s.name}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span
+                          className={cn(
+                            LABEL_SHADE,
+                            'text-[12px] sm:text-sm',
+                            isSel && 'text-gold-soft',
+                          )}
+                        >
+                          {s.name}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-              {/* Заголовок семьи в центре — белый жирноватый текст с тонкой чёрной обводкой + яркий ореол в тон арта. */}
-              {family && (
-                <span
-                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${familyCenter?.x ?? 50}%`, top: `${familyCenter?.y ?? 50}%` }}
-                >
+                {/* Заголовок семьи в центре — белый жирноватый текст с тонкой чёрной обводкой + яркий ореол в тон арта. */}
+                {family && (
                   <span
-                    aria-hidden
-                    className="absolute top-1/2 left-1/2 h-[175%] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
-                    style={{
-                      background: `radial-gradient(ellipse, ${family.color} 0%, transparent 72%)`,
-                      opacity: 0.9,
-                      filter: 'blur(5px)',
-                    }}
-                  />
-                  <span
-                    className="relative ps-[0.1em] font-sans text-[13px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase sm:text-[15px]"
-                    style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.92)', paintOrder: 'stroke' }}
+                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${familyCenter?.x ?? 50}%`, top: `${familyCenter?.y ?? 50}%` }}
                   >
-                    {SHORT[family.id] ?? family.name}
+                    <span
+                      aria-hidden
+                      className="absolute top-1/2 left-1/2 h-[175%] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
+                      style={{
+                        background: `radial-gradient(ellipse, ${family.color} 0%, transparent 72%)`,
+                        opacity: 0.9,
+                        filter: 'blur(5px)',
+                      }}
+                    />
+                    <span
+                      className="relative ps-[0.1em] font-sans text-[13px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase sm:text-[15px]"
+                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.92)', paintOrder: 'stroke' }}
+                    >
+                      {SHORT[family.id] ?? family.name}
+                    </span>
                   </span>
-                </span>
-              )}
+                )}
+              </div>
             </>
           )}
         </div>
@@ -309,11 +321,7 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
               <p className="text-ink-muted mt-1.5 text-[13px] leading-relaxed">
                 {shade.description}
               </p>
-              <button
-                type="button"
-                onClick={() => commit(shade)}
-                className="bg-gold text-canvas hover:shadow-glow mt-3 h-10 w-full rounded-lg font-medium transition-shadow duration-300"
-              >
+              <button type="button" onClick={() => commit(shade)} className="btn-gold mt-3 h-10">
                 Это оно
               </button>
               <button

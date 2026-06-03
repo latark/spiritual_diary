@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import { EMOTION_FAMILIES, type EmotionFamily, type EmotionShade } from '@/shared/content/emotions';
 import { cn } from '@/shared/lib/cn';
@@ -93,6 +93,27 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
   const [family, setFamily] = useState<EmotionFamily | null>(null);
   const [shade, setShade] = useState<EmotionShade | null>(null);
 
+  // Подписи не должны появляться раньше арта: предзагружаем все картинки колеса,
+  // а слой (арт + подписи) показываем только когда нужная картинка готова.
+  const [readySrcs, setReadySrcs] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    const list = [
+      '/wheel-v6/main.png',
+      ...EMOTION_FAMILIES.map((f) => `/wheel-v6/family/${f.id}.png`),
+    ];
+    let alive = true;
+    for (const s of list) {
+      const img = new Image();
+      img.onload = () => {
+        if (alive) setReadySrcs((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
+      };
+      img.src = s;
+    }
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const byId = (id: string) => EMOTION_FAMILIES.find((f) => f.id === id);
 
   function selectFamily(f: EmotionFamily): void {
@@ -123,6 +144,8 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
     : 'Что ты сейчас чувствуешь?';
   const subtitle = family ? 'нажми на оттенок' : 'выбери, чтобы осознать и трансформировать';
   const familyCenter = family ? (FAMILY_CENTER[family.id] ?? { x: 50, y: 50 }) : null;
+  const artSrc = family ? `/wheel-v6/family/${family.id}.png` : '/wheel-v6/main.png';
+  const ready = readySrcs.has(artSrc);
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -133,98 +156,119 @@ export function EmotionWheel({ onSelect }: { onSelect: (e: SelectedEmotion) => v
 
       <div className="relative -mx-4 aspect-square w-full max-w-[600px] select-none [-webkit-touch-callout:none] sm:mx-0">
         {/* Анимируемый слой: при смене семья/общее колесо переигрывается плавное появление. */}
-        <div key={family?.id ?? 'overview'} className="animate-wheel-in absolute inset-0">
-          {/* Арт колеса — CSS-фон (не <img>): нельзя сохранить/перетащить/выделить, воспринимается как фон. */}
-          <div
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute inset-0 bg-contain bg-center bg-no-repeat select-none',
-              // Дочерние цветы ярче/неоновее — приглушаем, чтобы не били в глаза.
-              family && (FAMILY_DIM[family.id] ?? DIM_DEFAULT),
-            )}
-            style={{
-              backgroundImage: `url(${family ? `/wheel-v6/family/${family.id}.png` : '/wheel-v6/main.png'})`,
-            }}
-          />
-
-          {/* Подписи семей (общее колесо) */}
-          {!family &&
-            OVERVIEW_ORDER.map((id) => {
-              const f = byId(id);
-              if (!f) return null;
-              const pos = posStyle(OVERVIEW_POS[id]);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-label={SHORT[id] ?? f.name}
-                  onClick={() => selectFamily(f)}
-                  onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
-                  style={pos}
-                  className="group absolute flex w-[26%] items-center justify-center"
-                >
-                  <HoverGlow />
-                  <span className={cn(LABEL_OVERVIEW, 'text-[13px] sm:text-[15px]')}>
-                    {SHORT[id] ?? f.name}
-                  </span>
-                </button>
-              );
-            })}
-
-          {/* Подписи оттенков (экран семьи) */}
-          {family &&
-            family.shades.map((s) => {
-              const pos = posStyle(FAMILY_POS[family.id]?.[s.id]);
-              const isSel = shade?.id === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-label={s.name}
-                  onClick={() => {
-                    buzz(8);
-                    setShade(s);
-                  }}
-                  onKeyDown={(e) =>
-                    onActivateKey(e, () => {
-                      buzz(8);
-                      setShade(s);
-                    })
-                  }
-                  style={pos}
-                  className="group absolute inline-flex items-center justify-center whitespace-nowrap"
-                >
-                  <span
-                    className={cn(LABEL_SHADE, 'text-[12px] sm:text-sm', isSel && 'text-gold-soft')}
-                  >
-                    {s.name}
-                  </span>
-                </button>
-              );
-            })}
-
-          {/* Заголовок семьи в центре — белый жирноватый текст с тонкой чёрной обводкой + яркий ореол в тон арта. */}
-          {family && (
-            <span
-              className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${familyCenter?.x ?? 50}%`, top: `${familyCenter?.y ?? 50}%` }}
-            >
-              <span
+        <div
+          key={(family?.id ?? 'overview') + (ready ? '' : '-loading')}
+          className={cn('absolute inset-0', ready && 'animate-wheel-in')}
+        >
+          {!ready && (
+            // Пока арт не загружен — мягкая пульсация; подписи не показываем (иначе диссонанс).
+            <div className="absolute inset-0 grid place-items-center">
+              <div
                 aria-hidden
-                className="absolute top-1/2 left-1/2 h-[175%] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
+                className="animate-breathe size-1/3 rounded-full"
                 style={{
-                  background: `radial-gradient(ellipse, ${family.color} 0%, transparent 72%)`,
-                  opacity: 0.9,
-                  filter: 'blur(5px)',
+                  background: 'radial-gradient(circle, rgba(231,207,122,0.16), transparent 70%)',
                 }}
               />
-              <span
-                className="relative ps-[0.1em] font-sans text-[13px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase sm:text-[15px]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.92)', paintOrder: 'stroke' }}
-              >
-                {SHORT[family.id] ?? family.name}
-              </span>
-            </span>
+            </div>
+          )}
+          {ready && (
+            <>
+              {/* Арт колеса — CSS-фон (не <img>): нельзя сохранить/перетащить/выделить, воспринимается как фон. */}
+              <div
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute inset-0 bg-contain bg-center bg-no-repeat select-none',
+                  // Дочерние цветы ярче/неоновее — приглушаем, чтобы не били в глаза.
+                  family && (FAMILY_DIM[family.id] ?? DIM_DEFAULT),
+                )}
+                style={{ backgroundImage: `url(${artSrc})` }}
+              />
+
+              {/* Подписи семей (общее колесо) */}
+              {!family &&
+                OVERVIEW_ORDER.map((id) => {
+                  const f = byId(id);
+                  if (!f) return null;
+                  const pos = posStyle(OVERVIEW_POS[id]);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-label={SHORT[id] ?? f.name}
+                      onClick={() => selectFamily(f)}
+                      onKeyDown={(e) => onActivateKey(e, () => selectFamily(f))}
+                      style={pos}
+                      className="group absolute flex w-[26%] items-center justify-center"
+                    >
+                      <HoverGlow />
+                      <span className={cn(LABEL_OVERVIEW, 'text-[13px] sm:text-[15px]')}>
+                        {SHORT[id] ?? f.name}
+                      </span>
+                    </button>
+                  );
+                })}
+
+              {/* Подписи оттенков (экран семьи) */}
+              {family &&
+                family.shades.map((s) => {
+                  const pos = posStyle(FAMILY_POS[family.id]?.[s.id]);
+                  const isSel = shade?.id === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-label={s.name}
+                      onClick={() => {
+                        buzz(8);
+                        setShade(s);
+                      }}
+                      onKeyDown={(e) =>
+                        onActivateKey(e, () => {
+                          buzz(8);
+                          setShade(s);
+                        })
+                      }
+                      style={pos}
+                      className="group absolute inline-flex items-center justify-center whitespace-nowrap"
+                    >
+                      <span
+                        className={cn(
+                          LABEL_SHADE,
+                          'text-[12px] sm:text-sm',
+                          isSel && 'text-gold-soft',
+                        )}
+                      >
+                        {s.name}
+                      </span>
+                    </button>
+                  );
+                })}
+
+              {/* Заголовок семьи в центре — белый жирноватый текст с тонкой чёрной обводкой + яркий ореол в тон арта. */}
+              {family && (
+                <span
+                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${familyCenter?.x ?? 50}%`, top: `${familyCenter?.y ?? 50}%` }}
+                >
+                  <span
+                    aria-hidden
+                    className="absolute top-1/2 left-1/2 h-[175%] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
+                    style={{
+                      background: `radial-gradient(ellipse, ${family.color} 0%, transparent 72%)`,
+                      opacity: 0.9,
+                      filter: 'blur(5px)',
+                    }}
+                  />
+                  <span
+                    className="relative ps-[0.1em] font-sans text-[13px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase sm:text-[15px]"
+                    style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.92)', paintOrder: 'stroke' }}
+                  >
+                    {SHORT[family.id] ?? family.name}
+                  </span>
+                </span>
+              )}
+            </>
           )}
         </div>
 

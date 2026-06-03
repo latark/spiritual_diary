@@ -1,6 +1,8 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { HelpCircle } from 'lucide-react';
 
+import { APP } from '@/shared/config/app';
 import { ROUTES } from '@/shared/config/navigation';
 
 function formatToday(): string {
@@ -18,7 +20,26 @@ function formatToday(): string {
 export function Topbar() {
   return (
     <header className="border-line/40 bg-canvas/70 sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md md:px-8">
-      <span className="font-display text-ink-muted text-lg capitalize">{formatToday()}</span>
+      {/* Мобайл: бренд слева (сайдбар скрыт). Десктоп: дата (бренд живёт в сайдбаре). */}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Link
+          href={ROUTES.home}
+          aria-label={APP.shortName}
+          className="flex shrink-0 items-center gap-2 md:hidden"
+        >
+          <Image
+            src="/cassiopeia-logo.png"
+            alt=""
+            width={560}
+            height={560}
+            className="size-7 shrink-0"
+          />
+          <span className="font-display text-ink text-lg">{APP.shortName}</span>
+        </Link>
+        <span className="font-display text-ink-muted hidden truncate text-lg capitalize md:inline">
+          {formatToday()}
+        </span>
+      </div>
 
       <div className="flex items-center gap-3">
         <Link

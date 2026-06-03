@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HelpCircle } from 'lucide-react';
@@ -17,8 +18,15 @@ export function Sidebar() {
 
   return (
     <aside className="border-line/40 bg-surface/40 fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r px-4 py-6 md:flex">
-      <Link href={ROUTES.home} className="font-display text-ink px-2 text-xl">
-        {APP.name}
+      <Link href={ROUTES.home} className="flex items-center gap-2.5 px-1">
+        <Image
+          src="/cassiopeia-logo.png"
+          alt=""
+          width={560}
+          height={560}
+          className="size-9 shrink-0"
+        />
+        <span className="font-display text-ink text-xl leading-tight">{APP.name}</span>
       </Link>
 
       <nav className="mt-10 flex flex-col gap-1">
@@ -31,7 +39,7 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="bg-gold text-canvas shadow-glow-soft hover:shadow-glow mb-2 flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-shadow duration-300"
+                className="btn-gold mb-2 flex w-full items-center justify-start gap-3 px-4 py-3"
               >
                 <Icon className="size-5" strokeWidth={1.75} />
                 {item.label}

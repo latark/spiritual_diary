@@ -208,6 +208,65 @@
   }
 }
 
+@layer components {
+  /* Базовая «стеклянная» золотая кнопка — primary CTA по всему продукту.
+     Полупрозрачное золото + backdrop-blur (стекло), объём через верхний блик
+     и нижнюю внутреннюю тень, мягкая граница; свечение разгорается на hover.
+     Геометрия (высота/ширина/паддинги/отступы) задаётся утилитами в разметке. */
+  .btn-gold {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content; /* по ширине текста, а не на всю строку */
+    max-width: 100%;
+    margin-inline: auto; /* центрируем в потоке/флексе */
+    padding-inline: 1.25rem; /* небольшой отступ по краям */
+    color: var(--color-canvas);
+    font-weight: 500;
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in oklab, var(--color-gold-soft) 55%, transparent);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-gold-soft) 90%, transparent),
+      color-mix(in oklab, var(--color-gold) 72%, transparent)
+    );
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -2px 5px -3px rgba(54, 38, 6, 0.4),
+      0 6px 16px -10px color-mix(in oklab, var(--color-gold) 65%, transparent);
+    transition:
+      box-shadow 0.3s var(--ease-gentle),
+      filter 0.3s var(--ease-gentle),
+      transform 0.15s var(--ease-gentle);
+  }
+  .btn-gold:hover {
+    filter: brightness(1.08) saturate(1.04);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -2px 5px -3px rgba(54, 38, 6, 0.4),
+      var(--shadow-glow),
+      0 10px 22px -12px color-mix(in oklab, var(--color-gold) 70%, transparent);
+  }
+  .btn-gold:active {
+    transform: translateY(1px);
+    filter: brightness(0.98);
+    box-shadow:
+      inset 0 2px 6px -3px rgba(54, 38, 6, 0.5),
+      0 4px 10px -10px color-mix(in oklab, var(--color-gold) 55%, transparent);
+  }
+  .btn-gold:disabled {
+    cursor: default;
+    opacity: 0.45;
+    filter: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 4px 12px -10px color-mix(in oklab, var(--color-gold) 45%, transparent);
+  }
+}
+
 @layer base {
   html {
     height: 100%;

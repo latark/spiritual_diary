@@ -34,11 +34,7 @@ export function CompletionStep({
         {status === 'error' && (
           <>
             <p className="text-ink-muted text-sm">Не удалось сохранить запись.</p>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="bg-gold text-canvas hover:shadow-glow h-10 rounded-lg px-5 text-sm font-medium transition-shadow duration-300"
-            >
+            <button type="button" onClick={onRetry} className="btn-gold h-10 px-5 text-sm">
               Повторить
             </button>
           </>

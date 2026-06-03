@@ -26,11 +26,7 @@ export function CrisisSupport({ onBack }: { onBack: () => void }) {
 
       {/* TODO(crisis-фаза, §10): сюда — реальные контакты доверия от куратора/психолога школы. */}
 
-      <button
-        type="button"
-        onClick={onBack}
-        className="bg-gold text-canvas hover:shadow-glow h-11 rounded-lg px-6 font-medium transition-shadow duration-300"
-      >
+      <button type="button" onClick={onBack} className="btn-gold h-11 px-6">
         Я с собой рядом
       </button>
     </div>

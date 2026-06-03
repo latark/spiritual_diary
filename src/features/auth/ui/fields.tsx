@@ -42,10 +42,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
     <button
       type="submit"
       disabled={pending}
-      className={cn(
-        'bg-gold text-canvas hover:shadow-glow mt-2 h-12 rounded-lg font-medium transition-shadow duration-300',
-        pending && 'opacity-60',
-      )}
+      className={cn('btn-gold mt-2 h-12', pending && 'opacity-60')}
     >
       {pending ? '...' : children}
     </button>

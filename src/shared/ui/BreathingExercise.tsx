@@ -339,11 +339,7 @@ export function BreathingExercise({
       {!started ? (
         <div className="flex w-full flex-col items-center gap-7 py-4">
           <p className="text-ink-muted max-w-xs text-base leading-relaxed">{introText}</p>
-          <button
-            type="button"
-            onClick={() => setStarted(true)}
-            className="bg-gold text-canvas hover:shadow-glow h-12 w-full max-w-xs rounded-lg font-medium transition-shadow duration-300"
-          >
+          <button type="button" onClick={() => setStarted(true)} className="btn-gold h-12">
             {startLabel}
           </button>
         </div>
@@ -377,11 +373,7 @@ export function BreathingExercise({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onFinish}
-            className="bg-gold text-canvas hover:shadow-glow h-12 w-full max-w-xs rounded-lg font-medium transition-shadow duration-300"
-          >
+          <button type="button" onClick={onFinish} className="btn-gold h-12">
             {done ? doneLabel : skipLabel}
           </button>
         </>

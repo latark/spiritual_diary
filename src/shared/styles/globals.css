@@ -50,6 +50,8 @@
   --animate-glow: glow 5s var(--ease-gentle) infinite; /* пульс главной кнопки */
   --animate-fade-up: fade-up 0.25s var(--ease-gentle) both; /* появление контента */
   --animate-wheel-in: wheel-in 0.32s var(--ease-gentle) both; /* смена колеса семья/оттенки */
+  --animate-light-float: light-float 9s var(--ease-gentle) infinite; /* парение тела света */
+  --animate-aura-pulse: aura-pulse 7s var(--ease-gentle) infinite; /* медленный пульс ауры */
 }
 
 /* Шрифты подключаются через next/font (см. shared/config/fonts.ts),
@@ -100,6 +102,29 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Тело света: тихое парение в космосе и медленный пульс ауры. */
+@keyframes light-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes aura-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
   }
 }
 

@@ -34,8 +34,17 @@ const GREETING: Record<DayPart, string> = {
   night: 'Доброй ночи',
 };
 
-/** Приветствие для часового пояса пользователя. Без tz — по локальному времени среды. */
-export function greeting(timeZone?: string | null, now: Date = new Date()): string {
+/**
+ * Приветствие для часового пояса пользователя. Без tz — по локальному времени среды.
+ * Если передано имя — добавляет обращение: «Доброй ночи, Анечка».
+ */
+export function greeting(
+  timeZone?: string | null,
+  name?: string | null,
+  now: Date = new Date(),
+): string {
   const hour = timeZone ? hourInTimeZone(timeZone, now) : now.getHours();
-  return GREETING[dayPart(hour)];
+  const base = GREETING[dayPart(hour)];
+  const trimmed = name?.trim();
+  return trimmed ? `${base}, ${trimmed}` : base;
 }

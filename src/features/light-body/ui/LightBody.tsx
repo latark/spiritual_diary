@@ -53,15 +53,18 @@ export function LightBody({ initialStage = 1 }: { initialStage?: number }) {
           }}
         />
 
-        {/* Парящий слой с изображением */}
-        <div className="animate-light-float absolute inset-0">
-          <img
-            src={src(stage)}
-            alt="Тело света"
-            draggable={false}
-            className="absolute inset-0 size-full object-contain"
-            style={{ mixBlendMode: 'screen', ...maskStyle }}
-          />
+        {/* Парящий слой — в статичном контейнере с тем же скруглением, что и рамка,
+            чтобы углы картинки обрезались одинаково с рамкой (контейнер статичен — не «едет» при парении). */}
+        <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
+          <div className="animate-light-float absolute inset-0">
+            <img
+              src={src(stage)}
+              alt="Тело света"
+              draggable={false}
+              className="absolute inset-0 size-full object-contain"
+              style={{ mixBlendMode: 'screen', ...maskStyle }}
+            />
+          </div>
         </div>
 
         {/* Тонкая мягко светящаяся рамка */}

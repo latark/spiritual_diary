@@ -38,7 +38,7 @@ export default async function OnboardingLayout({ children }: { children: ReactNo
         width={560}
         height={560}
         priority
-        className="pointer-events-none fixed right-4 top-4 z-20 h-auto w-24 opacity-90 sm:w-28"
+        className="pointer-events-none fixed top-4 right-4 z-20 h-auto w-24 opacity-70 sm:w-28"
       />
       <div className="animate-fade-up relative z-10 w-full max-w-md">{children}</div>
     </div>

@@ -5,6 +5,12 @@ interface ContinueButtonProps {
   disabled?: boolean;
   busy?: boolean;
   onClick?: () => void;
+  /** Выравнивание в блоке: по умолчанию к правому краю; 'center' — по центру. */
+  align?: 'right' | 'center';
+  /** Размер: 'md' (по умолчанию) или чуть меньший 'sm'. */
+  size?: 'md' | 'sm';
+  /** Доп. классы (добавляются последними — можно переопределить, напр. паддинг). */
+  className?: string;
 }
 
 export function ContinueButton({
@@ -12,6 +18,9 @@ export function ContinueButton({
   disabled,
   busy,
   onClick,
+  align = 'right',
+  size = 'md',
+  className,
 }: ContinueButtonProps) {
   return (
     <button
@@ -19,8 +28,11 @@ export function ContinueButton({
       disabled={disabled || busy}
       onClick={onClick}
       className={cn(
-        'bg-gold text-canvas hover:shadow-glow h-12 w-full rounded-lg font-medium transition-shadow duration-300',
+        'btn-gold',
+        align === 'center' ? 'mx-auto' : 'ms-auto me-0',
+        size === 'sm' ? 'h-10 px-4 text-sm' : 'h-12',
         (disabled || busy) && 'opacity-40',
+        className,
       )}
     >
       {busy ? '...' : children}

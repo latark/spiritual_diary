@@ -52,30 +52,3 @@ export async function saveChakraProfileAction(
   revalidatePath('/progress');
   return { ok: true };
 }
-
-/**
- * TODO(temp/dev): сброс результата теста чакр для перетестирования (profiles.chakra_profile →
- * null). Работает под сессией пользователя (RLS update-own). Убрать перед бетой вместе с
- * dev-ссылкой в EnergyPanel.
- */
-export async function resetChakraProfileAction(): Promise<SaveChakraResult> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: 'Сессия истекла — войди заново' };
-  }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ chakra_profile: null })
-    .eq('id', user.id);
-
-  if (error) {
-    return { error: 'Не удалось сбросить' };
-  }
-
-  revalidatePath('/progress');
-  return { ok: true };
-}

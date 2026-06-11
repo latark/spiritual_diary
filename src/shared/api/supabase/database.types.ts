@@ -94,16 +94,25 @@ export type Database = {
       };
       light_body_state: {
         Row: {
+          acknowledged_stage: number;
+          active_days: number;
+          last_active_date: string | null;
           points: number;
           updated_at: string;
           user_id: string;
         };
         Insert: {
+          acknowledged_stage?: number;
+          active_days?: number;
+          last_active_date?: string | null;
           points?: number;
           updated_at?: string;
           user_id: string;
         };
         Update: {
+          acknowledged_stage?: number;
+          active_days?: number;
+          last_active_date?: string | null;
           points?: number;
           updated_at?: string;
           user_id?: string;
@@ -178,6 +187,14 @@ export type Database = {
       add_light_point: {
         Args: Record<PropertyKey, never>;
         Returns: number;
+      };
+      claim_light_stage: {
+        Args: { p_stage: number };
+        Returns: undefined;
+      };
+      register_light_activity: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
       };
     };
     Enums: {

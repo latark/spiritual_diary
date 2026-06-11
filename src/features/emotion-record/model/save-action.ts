@@ -78,8 +78,9 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
     return { error: 'Не удалось сохранить. Попробуем ещё раз?' };
   }
 
-  // Сайд-эффект: +1 точка света. Лучшее усилие — не валим сохранение, если не вышло.
-  await supabase.rpc('add_light_point');
+  // Сайд-эффект: регистрируем активность тела света (+1 point всегда, +1 активный день в новый
+  // локальный день — драйвер фазы). Лучшее усилие — не валим сохранение, если не вышло.
+  await supabase.rpc('register_light_activity');
 
   // Запись отражается на главной (витальность тела), в «Памяти» и на «Пути» — освежаем их кэш.
   revalidatePath('/');

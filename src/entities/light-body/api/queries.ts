@@ -2,23 +2,37 @@ import 'server-only';
 
 import { createSupabaseServerClient } from '@/shared/api/supabase';
 
+import type { LightBodyState } from '../model/types';
+
+const DEFAULT_STATE: LightBodyState = {
+  points: 0,
+  activeDays: 0,
+  lastActiveDate: null,
+  acknowledgedStage: 1,
+};
+
 /**
- * Момент последней записи пользователя — основа витальности тела света. Берём
- * light_body_state.updated_at (его двигает add_light_point при каждой записи). Строки может
- * не быть (ещё ни одной записи) → null, что трактуется как «покой».
+ * Состояние тела света текущего пользователя. Строки может не быть (ещё ни одной записи) →
+ * дефолты (фаза 1, покой). Пишется только через RPC register_light_activity / claim_light_stage.
  */
-export async function getLightBodyActivity(): Promise<{ lastRecordAt: string | null }> {
+export async function getLightBodyState(): Promise<LightBodyState> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { lastRecordAt: null };
+  if (!user) return DEFAULT_STATE;
 
   const { data } = await supabase
     .from('light_body_state')
-    .select('updated_at')
+    .select('points, active_days, last_active_date, acknowledged_stage')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  return { lastRecordAt: data?.updated_at ?? null };
+  if (!data) return DEFAULT_STATE;
+  return {
+    points: data.points,
+    activeDays: data.active_days,
+    lastActiveDate: data.last_active_date,
+    acknowledgedStage: data.acknowledged_stage,
+  };
 }

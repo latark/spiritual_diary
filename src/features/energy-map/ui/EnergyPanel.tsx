@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import type { ChakraProfile, EnergyEntry } from '@/shared/content/chakras';
 
-import { resetChakraProfileAction, saveChakraProfileAction } from '../model/save-chakra-action';
+import { saveChakraProfileAction } from '../model/save-chakra-action';
 import { ChakraTest } from './ChakraTest';
 import { EnergyMap } from './EnergyMap';
 
@@ -34,17 +34,6 @@ export function EnergyPanel({
     setProfile(p); // мгновенный показ результата — отправная точка
     setTesting(false);
     void save(p);
-  }
-
-  // TODO(temp/dev): сброс для перетестирования — убрать перед бетой вместе с action.
-  async function devReset() {
-    const res = await resetChakraProfileAction();
-    if ('error' in res) {
-      setSaveError(res.error);
-      return;
-    }
-    setSaveError(null);
-    setProfile(null);
   }
 
   if (testing) {
@@ -84,15 +73,6 @@ export function EnergyPanel({
         </p>
       )}
       <EnergyMap initial={profile} entries={entries} />
-
-      {/* TODO(temp/dev): сброс теста для перетестирования — убрать перед бетой. */}
-      <button
-        type="button"
-        onClick={() => void devReset()}
-        className="text-ink-muted/60 hover:text-gold self-center text-xs underline underline-offset-4 transition-colors duration-200"
-      >
-        сбросить тест (temp)
-      </button>
     </div>
   );
 }

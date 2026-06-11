@@ -1,11 +1,11 @@
 import Link from 'next/link';
 
-import { daysSinceLastRecord, vitality } from '@/entities/light-body';
-import { getLightBodyActivity } from '@/entities/light-body/server';
+import { computeStage, ripeness, vitality } from '@/entities/light-body';
+import { getLightBodyState } from '@/entities/light-body/server';
 import { createSupabaseServerClient } from '@/shared/api/supabase';
 import { ROUTES } from '@/shared/config/navigation';
 import { greeting } from '@/shared/lib/greeting';
-import { localDate } from '@/shared/lib/local-date';
+import { dayNumber, localDate } from '@/shared/lib/local-date';
 import { DailyMessageCard, selectDailyMessage } from '@/features/daily-message';
 import { LightBody } from '@/features/light-body';
 
@@ -29,11 +29,18 @@ export default async function HomePage() {
     intention = profile?.intention_30d ?? null;
   }
 
-  // Витальность тела: тускнеет в отсутствие записей, при первой записи вернётся к 1.
-  const { lastRecordAt } = user ? await getLightBodyActivity() : { lastRecordAt: null };
-  const lightVitality = vitality(daysSinceLastRecord(lastRecordAt));
+  // Состояние тела света: фаза (драйвер — активные дни), готовность к переходу, витальность.
+  const lb = user ? await getLightBodyState() : null;
+  const today = localDate(timezone);
+  const stage = lb?.acknowledgedStage ?? 1;
+  const readyStage = computeStage(lb?.activeDays ?? 0);
+  // Витальность тускнеет с днями простоя (по локальной дате последней записи), при записи — к 1.
+  const daysIdle = lb?.lastActiveDate ? dayNumber(today) - dayNumber(lb.lastActiveDate) : Infinity;
+  const lightVitality = vitality(daysIdle);
+  // Вызревание показываем только когда переход ещё не доступен (иначе — кнопка).
+  const lightRipeness = lb && readyStage === stage ? ripeness(lb.activeDays, stage) : 0;
 
-  const message = user ? selectDailyMessage(user.id, localDate(timezone)) : null;
+  const message = user ? selectDailyMessage(user.id, today) : null;
 
   return (
     <div className="flex flex-col gap-6 pt-2">
@@ -45,9 +52,13 @@ export default async function HomePage() {
       {/* ≥1400px: тело света держит центр (обычный блок, w-full → рамка 330), «послание дня»
           поверх слева (absolute, из потока — не сжимает тело). Уже — стопкой по центру:
           тело света сверху, карта под ним. */}
-      {/* TODO(temp): preview даёт пролистать все 13 тел стрелками для проверки арта — убрать перед релизом */}
       <div className="relative flex flex-col items-center gap-8 min-[1400px]:block">
-        <LightBody initialStage={1} preview vitality={lightVitality} />
+        <LightBody
+          stage={stage}
+          readyStage={readyStage}
+          vitality={lightVitality}
+          ripeness={lightRipeness}
+        />
 
         {message ? (
           <div className="min-[1400px]:absolute min-[1400px]:top-1/2 min-[1400px]:left-0 min-[1400px]:-translate-y-1/2">

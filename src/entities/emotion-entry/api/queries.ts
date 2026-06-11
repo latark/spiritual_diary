@@ -93,6 +93,28 @@ export async function getEnergyEntries(): Promise<EnergyEntry[]> {
   }));
 }
 
+/**
+ * Записи за последние `days` суток — вход еженедельного анализа. Текущий пользователь; для
+ * планового прогона (cron по всем пользователям) понадобится service-role-вариант.
+ */
+export async function getEntriesSince(days: number): Promise<EmotionEntry[]> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const from = new Date(Date.now() - days * DAY_MS).toISOString();
+  const { data } = await supabase
+    .from('emotion_entries')
+    .select(SELECT)
+    .eq('user_id', user.id)
+    .gte('created_at', from)
+    .order('created_at', { ascending: true });
+
+  return (data ?? []).map(rowToEntry);
+}
+
 /** Осмысленные записи (с осознанием) — лента «Твой свет» на «Пути», свежие сверху. */
 export async function getInsightTrail(limit: number): Promise<EmotionEntry[]> {
   const supabase = await createSupabaseServerClient();

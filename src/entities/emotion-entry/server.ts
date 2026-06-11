@@ -6,4 +6,5 @@ export {
   getReturnCandidates,
   getInsightTrail,
   getEnergyEntries,
+  getEntriesSince,
 } from './api/queries';

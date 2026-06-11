@@ -18,7 +18,9 @@ export function Sidebar() {
 
   return (
     <aside className="border-line/40 bg-surface/40 fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r px-4 py-6 md:flex">
-      <Link href={ROUTES.home} className="flex items-center gap-2.5 px-1">
+      {/* Бренд — декоративный (не ссылка): логотип и название не должны казаться кликабельными.
+          Переход домой — через пункт «Дом» в навигации ниже. */}
+      <div className="flex items-center gap-2.5 px-1 select-none">
         <Image
           src="/cassiopeia-logo.png"
           alt=""
@@ -27,7 +29,7 @@ export function Sidebar() {
           className="size-9 shrink-0"
         />
         <span className="font-display text-ink text-xl leading-tight">{APP.name}</span>
-      </Link>
+      </div>
 
       <nav className="mt-10 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {

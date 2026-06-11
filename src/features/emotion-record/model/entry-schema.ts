@@ -9,6 +9,9 @@ export const emotionEntrySchema = z.object({
   intensity: z.number().int().min(1).max(5),
   // Сила после дыхания (переоценка облегчения). null = шаг пропустили.
   intensityAfter: z.number().int().min(1).max(5).nullable(),
+  // Колонка 1 (CBT): что случилось, своими словами. Опционально, свободный текст →
+  // save-action прогоняет через crisis-фильтр (§6).
+  situation: z.string().max(1000),
   causeSphere: z
     .enum(['root', 'sacral', 'solar', 'heart', 'throat', 'third_eye', 'crown'])
     .nullable(),

@@ -1,13 +1,3 @@
-/**
- * Валентность эмоции — для выбора маркера на теле:
- * позитивная → светлячок (тёплое свечение), негативная → чёрная колючка.
- * Удивление отнесено к позитивным (решение Артёма).
- */
-
-export type Valence = 'positive' | 'negative';
-
-const POSITIVE_FAMILIES = new Set(['joy', 'love', 'peace', 'interest', 'surprise']);
-
-export function familyValence(familyId: string): Valence {
-  return POSITIVE_FAMILIES.has(familyId) ? 'positive' : 'negative';
-}
+// Валентность переехала в shared/content (доменная логика семей, нужна нескольким слоям).
+// Ре-экспорт сохраняет существующий путь импорта внутри слайса.
+export { familyValence, type Valence } from '@/shared/content/valence';

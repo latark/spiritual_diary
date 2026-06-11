@@ -48,7 +48,10 @@ export function IntensityDots({
               style={{ height: SIZES[SIZES.length - 1], cursor: 'pointer' }}
             >
               <span
-                className={cn('rounded-full transition-all duration-300', isTop && 'animate-breathe')}
+                className={cn(
+                  'rounded-full transition-all duration-300',
+                  isTop && 'animate-breathe',
+                )}
                 style={{
                   width: size,
                   height: size,

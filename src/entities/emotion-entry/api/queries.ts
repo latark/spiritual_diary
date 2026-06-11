@@ -1,12 +1,14 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/shared/api/supabase';
+import type { ChakraId, EnergyEntry } from '@/shared/content/chakras';
+import { familyValence } from '@/shared/content/valence';
 
 import { rowToEntry } from '../lib/row-to-entry';
 import type { EmotionEntry } from '../model/types';
 
 const SELECT =
-  'id, user_id, family_id, shade_id, emotion_name, emotion_color, intensity, intensity_after, cause_sphere, cause_custom, background_thought_id, background_thought_custom, body_zones, awareness, created_at';
+  'id, user_id, family_id, shade_id, emotion_name, emotion_color, situation, intensity, intensity_after, cause_sphere, cause_custom, background_thought_id, background_thought_custom, body_zones, awareness, created_at';
 
 const DAY_MS = 86_400_000;
 
@@ -62,6 +64,33 @@ export async function getReturnCandidates(): Promise<EmotionEntry[]> {
     .order('created_at', { ascending: false });
 
   return (data ?? []).map(rowToEntry);
+}
+
+/**
+ * Вклады записей в энергию чакр — для карты и лучей «Тело и энергии». Чакра = сфера-причина
+ * (`cause_sphere` совпадает по id с чакрой); записи без сферы на чакры не влияют — отсекаем.
+ * Валентность — из семьи эмоции. Вся история (механика энергий копит влияние от baseline).
+ */
+export async function getEnergyEntries(): Promise<EnergyEntry[]> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('emotion_entries')
+    .select('family_id, cause_sphere, intensity, created_at')
+    .eq('user_id', user.id)
+    .not('cause_sphere', 'is', null)
+    .order('created_at', { ascending: true });
+
+  return (data ?? []).map((r) => ({
+    chakra: r.cause_sphere as ChakraId,
+    valence: familyValence(r.family_id),
+    intensity: r.intensity,
+    at: new Date(r.created_at).getTime(),
+  }));
 }
 
 /** Осмысленные записи (с осознанием) — лента «Твой свет» на «Пути», свежие сверху. */

@@ -1,31 +1,18 @@
 /**
- * Диагностика профиля чакр. 7 чакр × 3 вопроса = 21 вопрос.
- * Каждый ответ — насколько утверждение про тебя (1 «почти нет» … 4 «постоянно»).
+ * Тест чакр — диагностика профиля. 7 чакр × 3 вопроса = 21 вопрос.
+ * Каждый ответ — насколько утверждение про тебя (1 «почти никогда» … 4 «почти всегда»).
  * Все утверждения положительные (здоровое состояние чакры) → выше балл = сильнее чакра.
  * Итог на чакру: 0..100.
  *
- * ⚠️ КОНТЕНТ-ЧЕРНОВИК вопросов и интерпретаций. Финальные формулировки —
- * из методички школы (development_plan O-05, «контент уже есть в методичке»).
+ * Живёт в shared/content (вместе с доменом чакр): тест проходят в «Пути», а результат
+ * (профиль) кормит визуализации энергий. Раньше жил в онбординге — перенесён, т.к. тест
+ * больше не часть онбординга.
+ *
+ * ⚠️ КОНТЕНТ-ЧЕРНОВИК вопросов. Финальные формулировки — из методички школы.
  * Список чакр, id и алгоритм расчёта — финальные.
  */
 
-export type ChakraId = 'root' | 'sacral' | 'solar' | 'heart' | 'throat' | 'third_eye' | 'crown';
-
-export interface ChakraInfo {
-  id: ChakraId;
-  name: string;
-  color: string;
-}
-
-export const CHAKRAS: ChakraInfo[] = [
-  { id: 'root', name: 'Корневая', color: '#C0392B' },
-  { id: 'sacral', name: 'Сакральная', color: '#E67E22' },
-  { id: 'solar', name: 'Солнечное сплетение', color: '#F1C40F' },
-  { id: 'heart', name: 'Сердечная', color: '#2ECC71' },
-  { id: 'throat', name: 'Горловая', color: '#3498DB' },
-  { id: 'third_eye', name: 'Третий глаз', color: '#5B6BBF' },
-  { id: 'crown', name: 'Коронная', color: '#9B59B6' },
-];
+import { CHAKRAS, type ChakraId, type ChakraProfile } from './chakras';
 
 export interface ChakraQuestion {
   id: string;
@@ -72,11 +59,15 @@ export const CHAKRA_QUESTIONS: ChakraQuestion[] = [
   { id: 'crown_3', chakra: 'crown', prompt: 'Я ощущаю внутренний покой и доверие к жизни' },
 ];
 
-export type ChakraProfile = Record<ChakraId, number>;
+// Тест не уводит чакру в крайности: даже «слабый» результат не садится на левый край шкалы,
+// «сильный» — не на правый. Балл живёт в коридоре, оставляя место расти/проседать от записей.
+const TEST_MIN = 20;
+const TEST_MAX = 80;
 
 /**
  * Считает профиль из ответов (map questionId → 1..4).
- * Балл чакры = среднее по её 3 вопросам, отмасштабированное в 0..100.
+ * Балл чакры = среднее по её 3 вопросам, отмасштабированное в коридор TEST_MIN..TEST_MAX
+ * (а не 0..100), чтобы стартовая карта не упиралась в «совсем слаба»/«идеальна».
  */
 export function computeChakraProfile(answers: Record<string, number>): ChakraProfile {
   const profile = {} as ChakraProfile;
@@ -85,18 +76,8 @@ export function computeChakraProfile(answers: Record<string, number>): ChakraPro
     const vals = qs.map((q) => answers[q.id] ?? 0);
     const sum = vals.reduce((a, b) => a + b, 0);
     const avg = vals.length > 0 ? sum / vals.length : 0;
-    profile[chakra.id] = Math.round(((avg - 1) / 3) * 100);
+    const frac = (avg - 1) / 3; // 0..1
+    profile[chakra.id] = Math.round(TEST_MIN + frac * (TEST_MAX - TEST_MIN));
   }
   return profile;
-}
-
-export function chakraState(score: number): 'weak' | 'balanced' | 'strong' {
-  if (score < 45) return 'weak';
-  if (score < 70) return 'balanced';
-  return 'strong';
-}
-
-export function chakraStateLabel(score: number): string {
-  const s = chakraState(score);
-  return s === 'weak' ? 'требует внимания' : s === 'balanced' ? 'в норме' : 'сильная';
 }

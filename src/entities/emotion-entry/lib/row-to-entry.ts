@@ -11,6 +11,7 @@ export function rowToEntry(row: Tables<'emotion_entries'>): EmotionEntry {
     shadeId: row.shade_id,
     emotionName: row.emotion_name,
     emotionColor: row.emotion_color,
+    situation: row.situation,
     intensity: row.intensity,
     intensityAfter: row.intensity_after,
     causeSphere: (row.cause_sphere as LifeSphereId | null) ?? null,

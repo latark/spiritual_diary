@@ -74,7 +74,7 @@ export function BodyMap({
   return (
     <div className="flex flex-col items-center gap-3">
       <div
-        className="relative w-full max-w-[250px]"
+        className="relative w-full max-w-[205px]"
         style={{ aspectRatio: `${BODY_VIEW.w} / ${BODY_VIEW.h}` }}
       >
         <svg

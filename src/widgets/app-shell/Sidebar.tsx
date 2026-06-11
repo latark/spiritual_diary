@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Settings2 } from 'lucide-react';
 
 import { APP } from '@/shared/config/app';
 import { NAV_ITEMS, ROUTES } from '@/shared/config/navigation';
@@ -64,8 +64,9 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-3">
-        <div className="bg-surface text-ink-muted rounded-lg px-4 py-3 text-sm">
-          <span className="text-ink">Бесплатный план</span>
+        <div className="text-ink-muted/70 flex items-center gap-2 px-2 text-sm">
+          <span className="bg-gold-soft/60 size-1.5 rounded-full" />
+          Свободный доступ
         </div>
         <Link
           href={ROUTES.help}
@@ -73,6 +74,16 @@ export function Sidebar() {
         >
           <HelpCircle className="size-4" strokeWidth={1.5} />
           Поддержка
+        </Link>
+        <Link
+          href={ROUTES.profile}
+          className={cn(
+            'flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors duration-300',
+            isActive(pathname, ROUTES.profile) ? 'text-gold' : 'text-ink-muted hover:text-gold',
+          )}
+        >
+          <Settings2 className="size-4" strokeWidth={1.5} />
+          Твой дневник
         </Link>
       </div>
     </aside>

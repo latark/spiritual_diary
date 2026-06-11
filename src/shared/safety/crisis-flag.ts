@@ -7,6 +7,7 @@ export type CrisisSource =
   | 'record_cause'
   | 'record_thought'
   | 'record_awareness'
+  | 'record_situation'
   | 'onboarding_intention';
 
 type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;

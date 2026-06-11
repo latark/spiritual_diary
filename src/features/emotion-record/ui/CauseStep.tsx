@@ -2,47 +2,32 @@
 
 import { useState } from 'react';
 
-import { detectCrisis } from '@/shared/safety';
-import { LIFE_SPHERES, type LifeSphereId } from '@/shared/content/life-spheres';
+import { LIFE_SPHERES, LIFE_SPHERE_BY_ID, type LifeSphereId } from '@/shared/content/life-spheres';
 import { cn } from '@/shared/lib/cn';
 
 export interface CauseValue {
   sphereId: LifeSphereId | null;
-  custom: string;
+  /** Уточнение — под-область сферы (из каталога, не свободный текст). '' = сфера в целом. */
+  area: string;
 }
 
 export function CauseStep({
   onSubmit,
   onBack,
-  onCrisis,
 }: {
   onSubmit: (value: CauseValue) => void;
   onBack: () => void;
-  onCrisis: () => void;
 }) {
   const [sphereId, setSphereId] = useState<LifeSphereId | null>(null);
-  const [custom, setCustom] = useState('');
+  const [area, setArea] = useState('');
 
-  const canContinue = sphereId !== null || custom.trim().length > 0;
-
-  function submit(): void {
-    const trimmed = custom.trim();
-    if (trimmed) {
-      if (detectCrisis(trimmed).triggered) {
-        onCrisis();
-        return;
-      }
-      onSubmit({ sphereId: null, custom: trimmed });
-      return;
-    }
-    if (sphereId) onSubmit({ sphereId, custom: '' });
-  }
+  const areas = sphereId ? LIFE_SPHERE_BY_ID[sphereId].areas : [];
 
   return (
     <div className="animate-fade-up flex flex-col items-center gap-5">
       <div className="text-center">
         <h2 className="font-display text-ink text-2xl">Что вызвало это чувство?</h2>
-        <p className="text-ink-muted mt-1 text-sm">выбери сферу жизни — или впиши свою причину</p>
+        <p className="text-ink-muted mt-1 text-sm">выбери сферу жизни — и, если хочешь, уточни</p>
       </div>
 
       <div className="flex max-w-md flex-wrap justify-center gap-2">
@@ -54,7 +39,7 @@ export function CauseStep({
               type="button"
               onClick={() => {
                 setSphereId(selected ? null : s.id);
-                setCustom('');
+                setArea('');
               }}
               className={cn(
                 'rounded-full px-4 py-2 text-sm transition-shadow duration-200',
@@ -69,19 +54,28 @@ export function CauseStep({
         })}
       </div>
 
-      <div className="w-full max-w-md">
-        <input
-          type="text"
-          value={custom}
-          onChange={(e) => {
-            setCustom(e.target.value);
-            if (e.target.value) setSphereId(null);
-          }}
-          placeholder="или своя причина…"
-          maxLength={200}
-          className="bg-surface-raised text-ink placeholder:text-ink-muted/60 focus:ring-gold/50 w-full rounded-lg px-4 py-3 text-sm focus:ring-1 focus:outline-none"
-        />
-      </div>
+      {sphereId && (
+        <div className="animate-fade-up flex max-w-md flex-wrap justify-center gap-2">
+          {areas.map((a) => {
+            const selected = area === a;
+            return (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setArea(selected ? '' : a)}
+                className={cn(
+                  'rounded-full px-3.5 py-1.5 text-xs transition-shadow duration-200',
+                  selected
+                    ? 'bg-surface-raised text-ink ring-gold shadow-glow-soft ring-1'
+                    : 'bg-surface-raised/60 text-ink-muted hover:text-ink',
+                )}
+              >
+                {a}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <button
@@ -93,8 +87,8 @@ export function CauseStep({
         </button>
         <button
           type="button"
-          onClick={submit}
-          disabled={!canContinue}
+          onClick={() => sphereId && onSubmit({ sphereId, area })}
+          disabled={sphereId === null}
           className="bg-surface-raised text-ink ring-gold/40 enabled:hover:ring-gold enabled:hover:shadow-glow-soft h-11 rounded-lg px-6 font-medium ring-1 transition-all duration-300 disabled:opacity-40 disabled:ring-transparent"
         >
           Далее

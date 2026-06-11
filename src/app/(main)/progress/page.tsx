@@ -1,8 +1,5 @@
+import { ProgressScreen } from '@/views/progress';
+
 export default function ProgressPage() {
-  return (
-    <div className="flex flex-col gap-2 pt-6">
-      <h1 className="font-display text-ink text-3xl">Путь</h1>
-      <p className="text-ink-muted">Соберём твоё световое тело вместе.</p>
-    </div>
-  );
+  return <ProgressScreen />;
 }

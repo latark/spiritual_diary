@@ -5,17 +5,15 @@ import { useState } from 'react';
 
 import { CrisisSupport } from '@/shared/ui/CrisisSupport';
 
-import type { ChakraProfile } from '../model/chakra';
 import { completeOnboardingAction } from '../model/save-action';
 import { EMPTY_ONBOARDING, type OnboardingData } from '../model/types';
 import { ProgressBar } from './ProgressBar';
 import { BirthStep } from './steps/BirthStep';
 import { BreathingStep } from './steps/BreathingStep';
-import { ChakraStep } from './steps/ChakraStep';
 import { IntentionStep } from './steps/IntentionStep';
 import { WelcomeStep } from './steps/WelcomeStep';
 
-const TOTAL = 4; // welcome(0) → chakra(1) → birth(2) → intention(3) → breathing(4)
+const TOTAL = 3; // welcome(0) → birth(1) → intention(2) → breathing(3)
 
 export function OnboardingFlow({ name }: { name: string }) {
   const router = useRouter();
@@ -43,7 +41,7 @@ export function OnboardingFlow({ name }: { name: string }) {
       return;
     }
     patch({ intention });
-    setStep(4);
+    setStep(3);
   }
 
   function finish() {
@@ -51,8 +49,8 @@ export function OnboardingFlow({ name }: { name: string }) {
     router.refresh();
   }
 
-  const note = step === 2 ? 'Осталось совсем чуть-чуть' : step === 3 ? 'И последний вопрос' : null;
-  const showProgress = step >= 1 && step <= 3;
+  const note = step === 2 ? 'И последний вопрос' : null;
+  const showProgress = step >= 1 && step <= 2;
 
   // Онбординг уже завершён на сервере (намерение очищено, флаг записан) — с экрана
   // поддержки ведём в приложение.
@@ -71,23 +69,15 @@ export function OnboardingFlow({ name }: { name: string }) {
 
       {step === 0 && <WelcomeStep name={name} onNext={() => setStep(1)} />}
       {step === 1 && (
-        <ChakraStep
-          onNext={(profile: ChakraProfile) => {
-            patch({ chakraProfile: profile });
+        <BirthStep
+          onNext={(v) => {
+            patch(v);
             setStep(2);
           }}
         />
       )}
-      {step === 2 && (
-        <BirthStep
-          onNext={(v) => {
-            patch(v);
-            setStep(3);
-          }}
-        />
-      )}
-      {step === 3 && <IntentionStep busy={busy} error={error} onSubmit={submitIntention} />}
-      {step === 4 && <BreathingStep onFinish={finish} />}
+      {step === 2 && <IntentionStep busy={busy} error={error} onSubmit={submitIntention} />}
+      {step === 3 && <BreathingStep onFinish={finish} />}
     </div>
   );
 }

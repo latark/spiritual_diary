@@ -26,10 +26,19 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
   const d = parsed.data;
 
   // Причина теперь выбирается из каталога (сфера + под-область) — не свободный текст,
-  // crisis-фильтр ей не нужен. Фоновая мысль ещё может быть своей → финальная сеть §6:
-  // триггернувший текст очищаем (в дневник не кладём), запись сохраняем, пишем флаг куратору.
+  // crisis-фильтр ей не нужен. Ситуация (Колонка 1) и фоновая мысль — свободные → финальная
+  // сеть §6: триггернувший текст очищаем (в дневник не кладём), запись сохраняем, флаг куратору.
   const causeCustom = d.causeCustom.trim() || null;
+  let situation = d.situation.trim() || null;
   let thoughtCustom = d.thoughtCustom.trim() || null;
+
+  if (situation) {
+    const c = await classifyCrisis(situation);
+    if (c.triggered) {
+      await recordCrisisFlag(supabase, user.id, c, 'record_situation');
+      situation = null;
+    }
+  }
 
   if (thoughtCustom) {
     const c = await classifyCrisis(thoughtCustom);
@@ -54,6 +63,7 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
       emotion_color: d.emotionColor,
       intensity: d.intensity,
       intensity_after: d.intensityAfter,
+      situation,
       cause_sphere: d.causeSphere,
       cause_custom: causeCustom,
       background_thought_id: d.thoughtId,

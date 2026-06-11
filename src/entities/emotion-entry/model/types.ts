@@ -11,6 +11,8 @@ export interface EmotionEntry {
   shadeId: string;
   emotionName: string;
   emotionColor: string;
+  /** Колонка 1 (CBT): что случилось, своими словами. null = не описывала. */
+  situation: string | null;
   /** Сила, выбранная при записи, 1..5. */
   intensity: number;
   /** Сила после дыхания (переоценка облегчения), 1..5. null = переоценку пропустили. */

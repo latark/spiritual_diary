@@ -52,6 +52,8 @@
   --animate-wheel-in: wheel-in 0.32s var(--ease-gentle) both; /* смена колеса семья/оттенки */
   --animate-light-float: light-float 9s var(--ease-gentle) infinite; /* парение тела света */
   --animate-aura-pulse: aura-pulse 7s var(--ease-gentle) infinite; /* медленный пульс ауры */
+  /* Переход тела на новую фазу: новое тело уже под старым, старое плавно гаснет. */
+  --animate-body-fade-out: body-fade-out 1.5s ease-in-out both;
 }
 
 /* Шрифты подключаются через next/font (см. shared/config/fonts.ts),
@@ -125,6 +127,16 @@
   50% {
     opacity: 0.8;
     transform: scale(1.05);
+  }
+}
+
+/* Переход тела света на новую фазу: старое тело плавно гаснет поверх нового. */
+@keyframes body-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -285,9 +297,84 @@
     color: var(--color-canvas);
   }
 
+  /* Tailwind v4 сбрасывает курсор кнопок на default — возвращаем «руку» всем
+     активным кнопкам/кликабельным ролям. disabled остаётся со стрелкой. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
   /* Фокус — мягкое свечение, не жёсткая рамка */
   :focus-visible {
     outline: none;
     box-shadow: var(--shadow-glow-soft);
+  }
+}
+
+/* Маленькие летающие светлячки (экран завершения и т.п.).
+   Позиция и дрейф задаются инлайн-переменными --fx/--fy на каждом огоньке. */
+@layer components {
+  .firefly {
+    position: absolute;
+    border-radius: 9999px;
+    background: radial-gradient(circle, var(--color-gold-soft), transparent 70%);
+    box-shadow: 0 0 8px -1px color-mix(in oklab, var(--color-gold) 60%, transparent);
+    transform: translate(-50%, -50%);
+    animation: firefly-float var(--ease-gentle) infinite;
+    will-change: transform, opacity;
+  }
+}
+
+@keyframes firefly-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+    opacity: 0.25;
+  }
+  25%,
+  75% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(calc(-50% + var(--fx, 0px)), calc(-50% + var(--fy, 0px)));
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firefly {
+    animation: none;
+  }
+}
+
+/* Флип карты дня — единственное намеренное elastic-движение (ease-out-back, ~800ms).
+   Состояние переворота — класс .is-flipped на .flip-card. */
+@layer components {
+  .flip-card {
+    perspective: 1400px;
+  }
+  .flip-card-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s var(--ease-out-back);
+  }
+  .flip-card.is-flipped .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  /* Лицевая грань поверх; задняя заранее повёрнута, при флипе встаёт лицом. */
+  .flip-face-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card-inner {
+    transition-duration: 0.001ms;
   }
 }

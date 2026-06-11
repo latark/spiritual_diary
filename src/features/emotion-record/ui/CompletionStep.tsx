@@ -6,12 +6,15 @@ export function CompletionStep({
   status,
   affirmation,
   relief,
+  hint,
   onRetry,
   onReset,
 }: {
   status: 'saving' | 'saved' | 'error';
   affirmation: string | null;
   relief: string | null;
+  /** Мягкий вопрос-зерно: на днях к нему можно вернуться на «Пути». */
+  hint?: string | null;
   onRetry: () => void;
   onReset: () => void;
 }) {
@@ -26,6 +29,13 @@ export function CompletionStep({
         {relief && <p className="text-ink mt-3 leading-relaxed">{relief}</p>}
         {affirmation && <p className="text-ink-muted mt-2 leading-relaxed">«{affirmation}»</p>}
       </div>
+
+      {hint && (
+        <div className="border-line/40 max-w-sm border-t pt-5">
+          <p className="text-ink-muted/70 text-xs">на днях побудь с этим вопросом</p>
+          <p className="font-display text-ink-muted mt-1.5 leading-relaxed">{hint}</p>
+        </div>
+      )}
 
       <div className="flex min-h-6 flex-col items-center gap-2">
         {status === 'saving' && <p className="text-ink-muted text-xs">сохраняю запись…</p>}

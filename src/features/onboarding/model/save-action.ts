@@ -40,7 +40,6 @@ export async function completeOnboardingAction(data: OnboardingData): Promise<Co
       birth_date: parsed.data.birthDate,
       birth_time: parsed.data.birthTime,
       birth_location: parsed.data.birthLocation,
-      chakra_profile: parsed.data.chakraProfile,
       intention_30d: intention,
       onboarding_completed: true,
     })

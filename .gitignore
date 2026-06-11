@@ -43,7 +43,10 @@ yarn-error.log*
 next-env.d.ts
 
 # project tooling
-.claude/local/
+.claude/local/*
+!.claude/local/backlog
+# Скрэтч прогонов skill-creator (eval-артефакты), сами скиллы (SKILL.md) — в репозитории
+.claude/skills/*-workspace/
 .serena/cache/
 
 # Бэкап исходных артов колеса (локально, не в репозиторий)

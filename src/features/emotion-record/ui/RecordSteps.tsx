@@ -2,6 +2,10 @@
 
 import { useRef, useState } from 'react';
 
+import {
+  POSITIVE_REFLECTION_PROMPTS,
+  REFLECTION_PROMPTS,
+} from '@/shared/content/awareness-prompts';
 import { THOUGHT_BY_ID } from '@/shared/content/background-thoughts';
 import { emotionGift } from '@/shared/content/emotion-gifts';
 import type { LifeSphereId } from '@/shared/content/life-spheres';
@@ -13,6 +17,7 @@ import { CauseStep, type CauseValue } from './CauseStep';
 import { CompletionStep } from './CompletionStep';
 import { IntensityStep } from './IntensityStep';
 import { ReliefStep } from './ReliefStep';
+import { SituationStep } from './SituationStep';
 import { ThoughtStep, type ThoughtValue } from './ThoughtStep';
 import type { EmotionEntryInput } from '../model/entry-schema';
 import { reliefMessage } from '../model/relief-message';
@@ -20,9 +25,18 @@ import { saveEmotionEntryAction } from '../model/save-action';
 import { familyValence } from '../model/valence';
 import type { RecordEmotion } from '../model/types';
 
-type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'breathing' | 'relief' | 'done';
+type Step =
+  | 'situation'
+  | 'intensity'
+  | 'cause'
+  | 'thought'
+  | 'body'
+  | 'breathing'
+  | 'relief'
+  | 'done';
 
 interface Draft {
+  situation: string;
   intensity: number | null;
   intensityAfter: number | null;
   causeSphere: LifeSphereId | null;
@@ -33,6 +47,7 @@ interface Draft {
 }
 
 const EMPTY: Draft = {
+  situation: '',
   intensity: null,
   intensityAfter: null,
   causeSphere: null,
@@ -66,7 +81,7 @@ export function RecordSteps({
 }) {
   const valence = familyValence(emotion.familyId);
 
-  const [step, setStep] = useState<Step>('intensity');
+  const [step, setStep] = useState<Step>('situation');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [crisis, setCrisis] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -76,6 +91,11 @@ export function RecordSteps({
 
   if (crisis) {
     return <CrisisSupport onBack={() => setCrisis(false)} />;
+  }
+
+  function submitSituation(situation: string): void {
+    setDraft((d) => ({ ...d, situation }));
+    setStep('intensity');
   }
 
   function submitIntensity(level: number): void {
@@ -101,6 +121,7 @@ export function RecordSteps({
       emotionColor: emotion.color,
       intensity: draft.intensity ?? 1,
       intensityAfter,
+      situation: draft.situation,
       causeSphere: draft.causeSphere,
       causeCustom: draft.causeCustom,
       thoughtId: draft.thoughtId,
@@ -137,7 +158,7 @@ export function RecordSteps({
   function resetAll(): void {
     setDraft(EMPTY);
     setSaveStatus('idle');
-    setStep('intensity');
+    setStep('situation');
     onReset();
   }
 
@@ -146,12 +167,31 @@ export function RecordSteps({
 
   const relief = reliefMessage(valence, draft.intensity ?? 1, draft.intensityAfter);
 
+  // Лёгкий намёк-зерно после записи: мягкий рефлексивный вопрос (не острый разбор —
+  // прицельный по искажению живёт позже в «Осознании»), указывает вперёд на «Путь».
+  // По валентности: светлой эмоции — savoring/благодарность, не «о чём предупредить».
+  // Детерминированно по силе, чтобы не мигал на ре-рендере.
+  const seeds = valence === 'positive' ? POSITIVE_REFLECTION_PROMPTS : REFLECTION_PROMPTS;
+  const hint = seeds[(draft.intensity ?? 1) % seeds.length];
+
   return (
     <div className="flex flex-col items-center gap-5 pt-2">
       <EmotionChip emotion={emotion} />
 
+      {step === 'situation' && (
+        <SituationStep
+          onSubmit={submitSituation}
+          onBack={onReset}
+          onCrisis={() => setCrisis(true)}
+        />
+      )}
+
       {step === 'intensity' && (
-        <IntensityStep color={emotion.color} onSubmit={submitIntensity} onBack={onReset} />
+        <IntensityStep
+          color={emotion.color}
+          onSubmit={submitIntensity}
+          onBack={() => setStep('situation')}
+        />
       )}
 
       {step === 'cause' && <CauseStep onSubmit={submitCause} onBack={() => setStep('intensity')} />}
@@ -225,6 +265,7 @@ export function RecordSteps({
           status={saveStatus === 'idle' ? 'saving' : saveStatus}
           affirmation={affirmation}
           relief={relief}
+          hint={hint}
           onRetry={() => lastInput.current && runSave(lastInput.current)}
           onReset={resetAll}
         />

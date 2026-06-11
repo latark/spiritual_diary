@@ -50,10 +50,12 @@ export function Topbar() {
           <HelpCircle className="size-5" strokeWidth={1.5} />
         </Link>
 
-        {/* Аватар-тотем (генеративный — заглушка на Phase 1) */}
-        <div
-          aria-hidden
-          className="from-gold-soft via-violet to-canvas shadow-glow-soft size-9 rounded-full bg-gradient-to-br"
+        {/* Аватар-тотем → «Твой дневник» (аккаунт, поддержка, сеанс). Глобальная точка входа
+            на всех экранах вместо отдельной вкладки «Я». Градиент пока генеративная заглушка. */}
+        <Link
+          href={ROUTES.profile}
+          aria-label="Твой дневник"
+          className="hover:shadow-glow focus-visible:shadow-glow from-gold-soft via-violet to-canvas shadow-glow-soft block size-9 rounded-full bg-gradient-to-br transition-shadow duration-300"
         />
       </div>
     </header>

@@ -51,6 +51,7 @@ export type Database = {
           intensity: number;
           intensity_after: number | null;
           shade_id: string;
+          situation: string | null;
           user_id: string;
         };
         Insert: {
@@ -68,6 +69,7 @@ export type Database = {
           intensity: number;
           intensity_after?: number | null;
           shade_id: string;
+          situation?: string | null;
           user_id: string;
         };
         Update: {
@@ -85,6 +87,7 @@ export type Database = {
           intensity?: number;
           intensity_after?: number | null;
           shade_id?: string;
+          situation?: string | null;
           user_id?: string;
         };
         Relationships: [];

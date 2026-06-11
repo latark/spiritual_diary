@@ -320,7 +320,7 @@ export function BreathingExercise({
 
       {!started ? (
         <div className="flex w-full max-w-xs flex-col items-center gap-7 py-4">
-          {giftText && <p className="font-sans text-ink text-lg leading-relaxed">{giftText}</p>}
+          {giftText && <p className="text-ink font-sans text-lg leading-relaxed">{giftText}</p>}
           <p className="text-ink-muted text-base leading-relaxed">{introText}</p>
           <button type="button" onClick={() => setStarted(true)} className="btn-gold h-12">
             {startLabel}

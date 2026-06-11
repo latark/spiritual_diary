@@ -3,12 +3,11 @@
 import { createSupabaseServerClient } from '@/shared/api/supabase';
 import { classifyCrisis, recordCrisisFlag } from '@/shared/safety';
 
-import { onboardingSchema } from './schema';
-import type { OnboardingData } from './types';
+import { onboardingSchema, type OnboardingInput } from './schema';
 
 export type CompleteResult = { ok: true } | { crisis: true } | { error: string };
 
-export async function completeOnboardingAction(data: OnboardingData): Promise<CompleteResult> {
+export async function completeOnboardingAction(data: OnboardingInput): Promise<CompleteResult> {
   const parsed = onboardingSchema.safeParse(data);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Проверь поля' };
@@ -37,9 +36,6 @@ export async function completeOnboardingAction(data: OnboardingData): Promise<Co
   const { error } = await supabase
     .from('profiles')
     .update({
-      birth_date: parsed.data.birthDate,
-      birth_time: parsed.data.birthTime,
-      birth_location: parsed.data.birthLocation,
       intention_30d: intention,
       onboarding_completed: true,
     })

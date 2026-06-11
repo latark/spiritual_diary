@@ -1,11 +1,12 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/shared/api/supabase';
+import { classifyCrisis, recordCrisisFlag } from '@/shared/safety';
 
 import { onboardingSchema } from './schema';
 import type { OnboardingData } from './types';
 
-export type CompleteResult = { ok: true } | { error: string };
+export type CompleteResult = { ok: true } | { crisis: true } | { error: string };
 
 export async function completeOnboardingAction(data: OnboardingData): Promise<CompleteResult> {
   const parsed = onboardingSchema.safeParse(data);
@@ -21,6 +22,18 @@ export async function completeOnboardingAction(data: OnboardingData): Promise<Co
     return { error: 'Сессия истекла — войди заново' };
   }
 
+  // Намерение — свободный текст → crisis-фильтр (§6). При срабатывании острый текст в
+  // профиль не пишем, флаг куратору, ведём на экран поддержки. Онбординг при этом
+  // завершаем (onboarding_completed = true), чтобы не запереть пользователя в цикле.
+  let intention: string | null = parsed.data.intention;
+  let crisis = false;
+  const c = await classifyCrisis(intention);
+  if (c.triggered) {
+    await recordCrisisFlag(supabase, user.id, c, 'onboarding_intention');
+    intention = null;
+    crisis = true;
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({
@@ -28,7 +41,7 @@ export async function completeOnboardingAction(data: OnboardingData): Promise<Co
       birth_time: parsed.data.birthTime,
       birth_location: parsed.data.birthLocation,
       chakra_profile: parsed.data.chakraProfile,
-      intention_30d: parsed.data.intention,
+      intention_30d: intention,
       onboarding_completed: true,
     })
     .eq('id', user.id);
@@ -37,5 +50,5 @@ export async function completeOnboardingAction(data: OnboardingData): Promise<Co
     return { error: 'Не удалось сохранить. Попробуем ещё раз?' };
   }
 
-  return { ok: true };
+  return crisis ? { crisis: true } : { ok: true };
 }

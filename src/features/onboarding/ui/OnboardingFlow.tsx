@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { CrisisSupport } from '@/shared/ui/CrisisSupport';
+
 import type { ChakraProfile } from '../model/chakra';
 import { completeOnboardingAction } from '../model/save-action';
 import { EMPTY_ONBOARDING, type OnboardingData } from '../model/types';
@@ -21,6 +23,7 @@ export function OnboardingFlow({ name }: { name: string }) {
   const [data, setData] = useState<OnboardingData>(EMPTY_ONBOARDING);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [crisis, setCrisis] = useState(false);
 
   function patch(p: Partial<OnboardingData>) {
     setData((d) => ({ ...d, ...p }));
@@ -31,6 +34,10 @@ export function OnboardingFlow({ name }: { name: string }) {
     setError(undefined);
     const res = await completeOnboardingAction({ ...data, intention });
     setBusy(false);
+    if ('crisis' in res) {
+      setCrisis(true);
+      return;
+    }
     if ('error' in res) {
       setError(res.error);
       return;
@@ -46,6 +53,12 @@ export function OnboardingFlow({ name }: { name: string }) {
 
   const note = step === 2 ? 'Осталось совсем чуть-чуть' : step === 3 ? 'И последний вопрос' : null;
   const showProgress = step >= 1 && step <= 3;
+
+  // Онбординг уже завершён на сервере (намерение очищено, флаг записан) — с экрана
+  // поддержки ведём в приложение.
+  if (crisis) {
+    return <CrisisSupport onBack={finish} />;
+  }
 
   return (
     <div className="flex w-full max-w-md flex-col gap-6">

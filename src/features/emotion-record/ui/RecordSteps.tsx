@@ -1,26 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
-import { BACKGROUND_THOUGHTS } from '@/shared/content/background-thoughts';
+import { THOUGHT_BY_ID } from '@/shared/content/background-thoughts';
+import { emotionGift } from '@/shared/content/emotion-gifts';
 import type { LifeSphereId } from '@/shared/content/life-spheres';
 import { BreathingExercise } from '@/shared/ui/BreathingExercise';
+import { CrisisSupport } from '@/shared/ui/CrisisSupport';
 
 import { BodyMap } from './BodyMap';
 import { CauseStep, type CauseValue } from './CauseStep';
 import { CompletionStep } from './CompletionStep';
-import { CrisisSupport } from './CrisisSupport';
 import { IntensityStep } from './IntensityStep';
+import { ReliefStep } from './ReliefStep';
 import { ThoughtStep, type ThoughtValue } from './ThoughtStep';
 import type { EmotionEntryInput } from '../model/entry-schema';
+import { reliefMessage } from '../model/relief-message';
 import { saveEmotionEntryAction } from '../model/save-action';
 import { familyValence } from '../model/valence';
 import type { RecordEmotion } from '../model/types';
 
-type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'breathing' | 'done';
+type Step = 'intensity' | 'cause' | 'thought' | 'body' | 'breathing' | 'relief' | 'done';
 
 interface Draft {
   intensity: number | null;
+  intensityAfter: number | null;
   causeSphere: LifeSphereId | null;
   causeCustom: string;
   thoughtId: number | null;
@@ -30,6 +34,7 @@ interface Draft {
 
 const EMPTY: Draft = {
   intensity: null,
+  intensityAfter: null,
   causeSphere: null,
   causeCustom: '',
   thoughtId: null,
@@ -49,13 +54,25 @@ function EmotionChip({ emotion }: { emotion: RecordEmotion }) {
   );
 }
 
-export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onReset: () => void }) {
+export function RecordSteps({
+  emotion,
+  onReset,
+  recordedFor,
+}: {
+  emotion: RecordEmotion;
+  onReset: () => void;
+  /** Бэкдейтинг из «Памяти»: день, за который пишем запись. null/undefined — обычная запись «сейчас». */
+  recordedFor?: Date | null;
+}) {
   const valence = familyValence(emotion.familyId);
 
   const [step, setStep] = useState<Step>('intensity');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [crisis, setCrisis] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Последний собранный input — чтобы «Повторить» сохраняло ровно его, а не пересобирало
+  // из draft (setDraft асинхронен).
+  const lastInput = useRef<EmotionEntryInput | null>(null);
 
   if (crisis) {
     return <CrisisSupport onBack={() => setCrisis(false)} />;
@@ -67,7 +84,7 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
   }
 
   function submitCause(v: CauseValue): void {
-    setDraft((d) => ({ ...d, causeSphere: v.sphereId, causeCustom: v.custom }));
+    setDraft((d) => ({ ...d, causeSphere: v.sphereId, causeCustom: v.area }));
     setStep('thought');
   }
 
@@ -76,31 +93,45 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
     setStep('body');
   }
 
-  function buildInput(): EmotionEntryInput {
+  function buildInput(intensityAfter: number | null): EmotionEntryInput {
     return {
       familyId: emotion.familyId,
       shadeId: emotion.shadeId,
       emotionName: emotion.name,
       emotionColor: emotion.color,
       intensity: draft.intensity ?? 1,
+      intensityAfter,
       causeSphere: draft.causeSphere,
       causeCustom: draft.causeCustom,
       thoughtId: draft.thoughtId,
       thoughtCustom: draft.thoughtCustom,
       bodyZones: draft.bodyZones,
+      // Полдень локального дня — далеко от границ суток, чтобы при группировке по локальному
+      // дню запись гарантированно осталась в выбранном дне в любой таймзоне.
+      recordedAt: recordedFor
+        ? new Date(
+            recordedFor.getFullYear(),
+            recordedFor.getMonth(),
+            recordedFor.getDate(),
+            12,
+          ).toISOString()
+        : undefined,
     };
   }
 
-  function runSave(): void {
+  function runSave(input: EmotionEntryInput): void {
     setSaveStatus('saving');
-    void saveEmotionEntryAction(buildInput()).then((r) =>
-      setSaveStatus('ok' in r ? 'saved' : 'error'),
-    );
+    void saveEmotionEntryAction(input).then((r) => setSaveStatus('ok' in r ? 'saved' : 'error'));
   }
 
-  function finishRecord(): void {
+  // Завершение «петли облегчения»: фиксируем переоценку (или её отсутствие) и сохраняем.
+  // setDraft асинхронен, поэтому строим input от явного after, а не от draft.
+  function finishRelief(intensityAfter: number | null): void {
+    const input = buildInput(intensityAfter);
+    lastInput.current = input;
+    setDraft((d) => ({ ...d, intensityAfter }));
+    runSave(input);
     setStep('done');
-    runSave();
   }
 
   function resetAll(): void {
@@ -111,9 +142,9 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
   }
 
   const affirmation =
-    draft.thoughtId != null
-      ? (BACKGROUND_THOUGHTS.find((t) => t.id === draft.thoughtId)?.positive ?? null)
-      : null;
+    draft.thoughtId != null ? (THOUGHT_BY_ID.get(draft.thoughtId)?.positive ?? null) : null;
+
+  const relief = reliefMessage(valence, draft.intensity ?? 1, draft.intensityAfter);
 
   return (
     <div className="flex flex-col items-center gap-5 pt-2">
@@ -123,18 +154,13 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
         <IntensityStep color={emotion.color} onSubmit={submitIntensity} onBack={onReset} />
       )}
 
-      {step === 'cause' && (
-        <CauseStep
-          onSubmit={submitCause}
-          onBack={() => setStep('intensity')}
-          onCrisis={() => setCrisis(true)}
-        />
-      )}
+      {step === 'cause' && <CauseStep onSubmit={submitCause} onBack={() => setStep('intensity')} />}
 
       {step === 'thought' && (
         <ThoughtStep
           valence={valence}
           familyId={emotion.familyId}
+          shadeId={emotion.shadeId}
           sphereId={draft.causeSphere}
           onSubmit={submitThought}
           onBack={() => setStep('cause')}
@@ -177,19 +203,29 @@ export function RecordSteps({ emotion, onReset }: { emotion: RecordEmotion; onRe
       {step === 'breathing' && (
         <BreathingExercise
           mode={valence === 'negative' ? 'release' : 'amplify'}
-          title={valence === 'negative' ? 'Отпусти на выдохе' : 'Дай этому свету расти'}
-          subtitle="Подыши вместе с кругом: вдох, задержка, выдох, задержка."
+          giftText={emotionGift(emotion.shadeId, emotion.familyId)}
+          introText={
+            valence === 'negative'
+              ? 'Сделай вдох и поблагодари эмоцию за помощь'
+              : 'Сделай вдох… и дай этому свету расти.'
+          }
+          startLabel="Наполнить светом"
           skipLabel="Пропустить"
-          doneLabel="Завершить"
-          onFinish={finishRecord}
+          doneLabel="Дальше"
+          onFinish={(completed) => (completed ? setStep('relief') : finishRelief(null))}
         />
+      )}
+
+      {step === 'relief' && (
+        <ReliefStep color={emotion.color} valence={valence} onSubmit={finishRelief} />
       )}
 
       {step === 'done' && (
         <CompletionStep
           status={saveStatus === 'idle' ? 'saving' : saveStatus}
           affirmation={affirmation}
-          onRetry={runSave}
+          relief={relief}
+          onRetry={() => lastInput.current && runSave(lastInput.current)}
           onReset={resetAll}
         />
       )}

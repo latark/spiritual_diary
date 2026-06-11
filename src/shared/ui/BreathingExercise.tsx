@@ -5,12 +5,14 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Дыхательная практика — общий компонент для онбординга и записи эмоции.
  * Ритм: бокс-дыхание 4-4-4-4 (вдох · задержка · выдох · задержка), по умолчанию 4 цикла.
- * Визуал — медитативная canvas-анимация, режим зависит от валентности эмоции:
- *  - 'release' (негатив): тёмная «скорлупа» с каждым выдохом осыпается частицами,
- *    изнутри всё ярче проступает свет — к концу остаётся чистый светлячок;
- *  - 'amplify' (позитив): светлячок с каждым вдохом притягивает светлые частицы и растёт;
- *  - 'calm' (онбординг/нейтрально): просто тёплый растущий свет, без скорлупы.
- * Анимация — только подсказка ритма; досрочный выход доступен всегда.
+ *
+ * Визуал по валентности:
+ *  - 'amplify' (светлая эмоция) и 'calm' (онбординг): светлячок начинается маленьким и
+ *    с каждым вдохом плавно растёт, в конце — большой и яркий.
+ *  - 'release' (тяжёлая эмоция): в центре тёмная колючка; с каждым выдохом от неё отлетают
+ *    кусочки, колючка обламывается и уменьшается, а внутри разгорается светлячок — растёт и
+ *    ярчает, пока полностью не перекроет колючку. В конце такой же большой и яркий.
+ * Анимация — подсказка ритма; досрочный выход доступен всегда.
  */
 
 export type BreathMode = 'release' | 'amplify' | 'calm';
@@ -24,21 +26,29 @@ const PHASES = [
 const PHASE_SEC = 4;
 const CYCLE_SEC = PHASE_SEC * PHASES.length; // 16
 
-// Палитра — тёмная тема (единственная в MVP), значения из globals.css.
+// Тёплый свет и тёмная колючка — значения из globals.css (тёмная тема, единственная в MVP).
 const LIGHT_CORE = '#fff7da';
 const LIGHT_MID = '#ffe9a8';
 const LIGHT_GLOW = '#e7cf7a';
-const SHELL_FILL = '#0c0c15';
-const SHELL_EDGE = 'rgba(232,226,248,0.42)';
+const THORN_FILL = '#0c0c15';
+const THORN_EDGE = '#e8e2f8';
 
 const easeInOut = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
+const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const rgba = (hex: string, a: number) => {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 };
 
-interface Particle {
+interface Mote {
+  angle: number;
+  radius: number;
+  speed: number;
+  size: number;
+  bob: number;
+}
+interface Frag {
   x: number;
   y: number;
   vx: number;
@@ -46,7 +56,6 @@ interface Particle {
   r: number;
   life: number;
   max: number;
-  dark: boolean;
 }
 
 export function BreathingExercise({
@@ -54,8 +63,9 @@ export function BreathingExercise({
   cycles = 4,
   title,
   subtitle,
+  giftText,
   introText = 'Давай сонастроимся и подышим вместе — это всего минута.',
-  startLabel = 'Подышим',
+  startLabel = 'Наполнить светом',
   skipLabel = 'Пропустить',
   doneLabel = 'Далее',
   onFinish,
@@ -64,11 +74,14 @@ export function BreathingExercise({
   cycles?: number;
   title?: string;
   subtitle?: string;
+  /** «Дар» эмоции — показываем перед началом. */
+  giftText?: string | null;
   introText?: string;
   startLabel?: string;
   skipLabel?: string;
   doneLabel?: string;
-  onFinish: () => void;
+  /** completed = практику довели до конца; false = пропустили досрочно. */
+  onFinish: (completed: boolean) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +100,7 @@ export function BreathingExercise({
     if (!ctx) return;
 
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const isRelease = mode === 'release';
 
     let size = 0;
     let dpr = 1;
@@ -102,64 +116,33 @@ export function BreathingExercise({
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
 
+    const motes: Mote[] = reduce
+      ? []
+      : Array.from({ length: 5 }, (_, i) => ({
+          angle: (Math.PI * 2 * i) / 5 + i * 0.7,
+          radius: lerp(0.32, 0.44, (i % 3) / 2),
+          speed: lerp(0.05, 0.11, (i % 4) / 3) * (i % 2 ? 1 : -1),
+          size: lerp(1, 2.2, ((i * 7) % 5) / 4),
+          bob: i * 1.3,
+        }));
+    const frags: Frag[] = [];
+
     const total = cycles * CYCLE_SEC;
     const start = performance.now();
-    const particles: Particle[] = [];
 
     let lastPhaseId = '';
     let lastNow = start;
     let finished = false;
-    // release: свет проступает от 0 к 1; иначе свет открыт сразу.
-    let reveal = mode === 'release' ? 0 : 1;
-    let revealTarget = reveal;
-    // amplify: светлячок растёт от 0 к 1; иначе сразу полный.
-    let growth = mode === 'amplify' ? 0 : 1;
-    let growthTarget = growth;
+    // grow: 0 — маленький светлячок (колючка целая), 1 — большой яркий (колючки нет).
+    let grow = 0;
+    let growTarget = 0;
 
-    function spawnDark(cx: number, cy: number, coreR: number): void {
-      if (reduce) return;
-      const k = size / 280;
-      for (let i = 0; i < 16; i++) {
-        const a = (Math.PI * 2 * i) / 16 + Math.random() * 0.5;
-        const sp = lerp(0.7, 1.6, Math.random()) * k;
-        particles.push({
-          x: cx + Math.cos(a) * coreR * 1.3,
-          y: cy + Math.sin(a) * coreR * 1.3,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp,
-          r: lerp(1.4, 3.4, Math.random()) * k,
-          life: 0,
-          max: lerp(1.0, 1.7, Math.random()),
-          dark: true,
-        });
-      }
-    }
-
-    function spawnLight(cx: number, cy: number): void {
-      if (reduce) return;
-      const k = size / 280;
-      for (let i = 0; i < 12; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const rr = size * lerp(0.34, 0.46, Math.random());
-        particles.push({
-          x: cx + Math.cos(a) * rr,
-          y: cy + Math.sin(a) * rr,
-          vx: 0,
-          vy: 0,
-          r: lerp(1.0, 2.6, Math.random()) * k,
-          life: 0,
-          max: PHASE_SEC,
-          dark: false,
-        });
-      }
-    }
-
-    function shellPath(cx: number, cy: number, rOuter: number, wobble: number): void {
-      const spikes = 9;
+    function star(cx: number, cy: number, outer: number, inner: number, rot: number): void {
+      const spikes = 11;
       ctx!.beginPath();
       for (let i = 0; i < spikes * 2; i++) {
-        const a = (Math.PI * i) / spikes - Math.PI / 2;
-        const r = (i % 2 === 0 ? rOuter : rOuter * 0.62) * (1 + Math.sin(a * 3 + wobble) * 0.04);
+        const r = i % 2 === 0 ? outer : inner;
+        const a = (Math.PI * i) / spikes + rot;
         const x = cx + r * Math.cos(a);
         const y = cy + r * Math.sin(a);
         if (i === 0) ctx!.moveTo(x, y);
@@ -168,11 +151,28 @@ export function BreathingExercise({
       ctx!.closePath();
     }
 
+    function shedFrags(cx: number, cy: number, r: number): void {
+      if (reduce) return;
+      const k = size / 280;
+      for (let i = 0; i < 9; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = lerp(0.8, 1.8, Math.random()) * k;
+        frags.push({
+          x: cx + Math.cos(a) * r,
+          y: cy + Math.sin(a) * r,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 0.3 * k,
+          r: lerp(2, 4.5, Math.random()) * k,
+          life: 0,
+          max: lerp(1.1, 1.9, Math.random()),
+        });
+      }
+    }
+
     let raf = requestAnimationFrame(function frame(now: number) {
       raf = requestAnimationFrame(frame);
-
-      const f = Math.min((now - lastNow) / 1000, 0.05) * 60; // нормировка к 60fps
       const dt = Math.min((now - lastNow) / 1000, 0.05);
+      const step = dt * 60;
       lastNow = now;
 
       const elapsedRaw = (now - start) / 1000;
@@ -189,135 +189,117 @@ export function BreathingExercise({
       const phaseProg = (tInCycle - phaseIdx * PHASE_SEC) / PHASE_SEC;
       const phaseId = `${cycleIdx}:${phaseIdx}`;
 
-      // Масштаб дыхания: 0 — пустой (выдох/нижняя задержка), 1 — полный (вдох/верхняя задержка).
+      // 0 — опавший (выдох/нижняя задержка), 1 — раскрытый (вдох/верхняя задержка).
       let breath: number;
       if (phaseIdx === 0) breath = easeInOut(phaseProg);
       else if (phaseIdx === 1) breath = 1;
       else if (phaseIdx === 2) breath = 1 - easeInOut(phaseProg);
       else breath = 0;
 
-      reveal += (revealTarget - reveal) * 0.06;
-      growth += (growthTarget - growth) * 0.06;
+      grow += (growTarget - grow) * 0.05;
 
-      const small = size * 0.09;
-      const big = size * 0.15;
-      const gScale = mode === 'amplify' ? lerp(0.6, 1, growth) : 1;
-      let coreR = lerp(small, big, breath) * gScale;
-
-      // Переход фазы: всплески частиц и шаги раскрытия/роста.
       if (phaseId !== lastPhaseId && !isDone) {
         const phase = PHASES[phaseIdx];
-        if (phase?.key === 'exhale' && mode === 'release') spawnDark(cx, cy, coreR);
-        if (phase?.key === 'inhale' && mode === 'amplify') spawnLight(cx, cy);
-        // конец выдоха (вошли в нижнюю задержку) → шаг раскрытия света
-        if (phaseIdx === 3 && mode === 'release') {
-          revealTarget = Math.min(1, revealTarget + 1 / cycles);
+        // release: на выдохе колючка осыпается и тут же уменьшается, свет подрастает.
+        if (isRelease && phase?.key === 'exhale') {
+          growTarget = Math.min(1, growTarget + 1 / cycles);
+          const thornNow = size * 0.2 * 1.2 * clamp01(1 - grow);
+          shedFrags(cx, cy, thornNow + size * 0.02);
         }
-        // конец вдоха (вошли в верхнюю задержку) → шаг роста
-        if (phaseIdx === 1 && mode === 'amplify') {
-          growthTarget = Math.min(1, growthTarget + 1 / cycles);
-        }
+        // amplify/calm: после вдоха — шаг роста света.
+        if (!isRelease && phaseIdx === 1) growTarget = Math.min(1, growTarget + 1 / cycles);
         setPhaseLabel(phase?.label ?? PHASES[0].label);
         setCycleNum(cycleIdx + 1);
         lastPhaseId = phaseId;
       }
 
-      if (isDone) {
-        revealTarget = 1;
-        growthTarget = 1;
-        if (!finished) {
-          finished = true;
-          setDone(true);
-        }
-        // мягкая идл-пульсация завершённого светлячка
-        const pulse = 0.5 + 0.5 * Math.sin(elapsedRaw * 1.3);
-        coreR = lerp(big * 0.92, big * 1.06, pulse) * gScale;
+      if (isDone && !finished) {
+        finished = true;
+        growTarget = 1;
+        setDone(true);
       }
 
-      const lightAlpha = mode === 'release' ? reveal : 1;
+      const startR = size * 0.05;
+      const bigR = size * 0.2;
+      const baseR = lerp(startR, bigR, grow);
+      const idle = isDone ? 0.5 + 0.5 * Math.sin(elapsedRaw * 1.1) : breath;
+      const coreR = baseR * (0.82 + 0.22 * idle);
+      const bright = (isRelease ? lerp(0.35, 1, grow) : 1) * (0.82 + 0.18 * idle);
 
-      // --- частицы ---
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        if (!p) continue;
-        p.life += dt;
-        if (p.dark) {
-          p.x += p.vx * f;
-          p.y += p.vy * f;
-          p.vx *= 0.97;
-          p.vy *= 0.97;
-          p.vy += 0.012 * f;
-          if (p.life >= p.max) particles.splice(i, 1);
-        } else {
-          const dx = cx - p.x;
-          const dy = cy - p.y;
-          p.x += dx * 0.05 * f;
-          p.y += dy * 0.05 * f;
-          if (Math.hypot(dx, dy) < coreR * 0.7 || p.life >= p.max) particles.splice(i, 1);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+
+      // --- тёмная колючка и осыпающиеся кусочки (только release) ---
+      if (isRelease) {
+        ctx.globalCompositeOperation = 'source-over';
+        const thornScale = clamp01(1 - grow);
+        const thornAlpha = clamp01(1 - grow * 1.15);
+        if (thornAlpha > 0.01) {
+          // колючка тоже дышит вместе с ритмом (общее увеличение-уменьшение)
+          const outer = bigR * 1.2 * thornScale * (0.85 + 0.15 * idle);
+          star(cx, cy, outer, outer * 0.46, elapsedRaw * 0.25);
+          ctx.fillStyle = rgba(THORN_FILL, thornAlpha);
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = rgba(THORN_EDGE, 0.32 * thornAlpha);
+          ctx.stroke();
+        }
+        for (let i = frags.length - 1; i >= 0; i--) {
+          const f = frags[i];
+          if (!f) continue;
+          f.life += dt;
+          f.x += f.vx * step;
+          f.y += f.vy * step;
+          f.vx *= 0.97;
+          f.vy = f.vy * 0.97 + 0.02 * step;
+          if (f.life >= f.max) {
+            frags.splice(i, 1);
+            continue;
+          }
+          const a = Math.max(0, 1 - f.life / f.max);
+          ctx.fillStyle = rgba(THORN_FILL, a);
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.lineWidth = 0.6;
+          ctx.strokeStyle = rgba(THORN_EDGE, 0.3 * a);
+          ctx.stroke();
         }
       }
 
-      // --- отрисовка ---
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx!.clearRect(0, 0, size, size);
-      ctx!.globalCompositeOperation = 'lighter';
+      // --- свет: аура, ядро-светлячок, искры ---
+      ctx.globalCompositeOperation = 'lighter';
 
-      // внешнее свечение
-      // Свечение обязано полностью гаснуть внутри холста, иначе круглый свет упирается в квадратный край.
-      const glowR = Math.min(
-        coreR * lerp(1.8, 2.6, mode === 'release' ? reveal : growth),
-        size * 0.46,
-      );
-      const glow = ctx!.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-      glow.addColorStop(0, rgba(LIGHT_MID, 0.45 * lightAlpha));
-      glow.addColorStop(0.5, rgba(LIGHT_GLOW, 0.18 * lightAlpha));
-      glow.addColorStop(1, rgba(LIGHT_GLOW, 0));
-      ctx!.fillStyle = glow;
-      ctx!.fillRect(0, 0, size, size);
+      const auraR = Math.min(size * 0.48, coreR * 2.6);
+      const aura = ctx.createRadialGradient(cx, cy, coreR * 0.4, cx, cy, auraR);
+      aura.addColorStop(0, rgba(LIGHT_MID, 0.16 * bright));
+      aura.addColorStop(0.55, rgba(LIGHT_GLOW, 0.07 * bright));
+      aura.addColorStop(1, rgba(LIGHT_GLOW, 0));
+      ctx.fillStyle = aura;
+      ctx.fillRect(0, 0, size, size);
 
-      // ядро-светлячок
-      const core = ctx!.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-      core.addColorStop(0, rgba(LIGHT_CORE, 0.98 * lightAlpha));
-      core.addColorStop(0.55, rgba(LIGHT_MID, 0.85 * lightAlpha));
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+      core.addColorStop(0, rgba(LIGHT_CORE, 0.98 * bright));
+      core.addColorStop(0.5, rgba(LIGHT_MID, 0.8 * bright));
       core.addColorStop(1, rgba(LIGHT_GLOW, 0));
-      ctx!.fillStyle = core;
-      ctx!.beginPath();
-      ctx!.arc(cx, cy, coreR, 0, Math.PI * 2);
-      ctx!.fill();
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+      ctx.fill();
 
-      // светлые частицы
-      for (const p of particles) {
-        if (p.dark) continue;
-        const a = Math.min(1, p.life * 2.2) * 0.9;
-        ctx!.fillStyle = rgba(LIGHT_CORE, a);
-        ctx!.beginPath();
-        ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx!.fill();
-      }
-
-      // тёмная скорлупа поверх света (release), тает по мере reveal
-      ctx!.globalCompositeOperation = 'source-over';
-      if (mode === 'release' && reveal < 0.985) {
-        const shellAlpha = 1 - reveal;
-        shellPath(cx, cy, coreR * 1.5, elapsedRaw * 0.6);
-        ctx!.fillStyle = rgba(SHELL_FILL, shellAlpha);
-        ctx!.fill();
-        ctx!.lineWidth = 1;
-        ctx!.strokeStyle = rgba('#e8e2f8', 0.42 * shellAlpha);
-        ctx!.stroke();
-      }
-
-      // тёмные частицы (осыпающаяся скорлупа)
-      for (const p of particles) {
-        if (!p.dark) continue;
-        const a = Math.max(0, 1 - p.life / p.max);
-        ctx!.fillStyle = rgba(SHELL_FILL, a);
-        ctx!.beginPath();
-        ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx!.fill();
-        ctx!.lineWidth = 0.6;
-        ctx!.strokeStyle = SHELL_EDGE.replace('0.42', (0.42 * a).toFixed(2));
-        ctx!.stroke();
+      for (const m of motes) {
+        m.angle += m.speed * dt;
+        const r = (m.radius + 0.015 * Math.sin(elapsedRaw * 0.6 + m.bob)) * size;
+        const mx = cx + Math.cos(m.angle) * r;
+        const my = cy + Math.sin(m.angle) * r;
+        const a = 0.38 * bright * (0.6 + 0.4 * Math.sin(elapsedRaw * 0.9 + m.bob));
+        const g = ctx.createRadialGradient(mx, my, 0, mx, my, m.size * 3);
+        g.addColorStop(0, rgba(LIGHT_CORE, a));
+        g.addColorStop(1, rgba(LIGHT_CORE, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(mx, my, m.size * 3, 0, Math.PI * 2);
+        ctx.fill();
       }
     });
 
@@ -337,8 +319,9 @@ export function BreathingExercise({
       )}
 
       {!started ? (
-        <div className="flex w-full flex-col items-center gap-7 py-4">
-          <p className="text-ink-muted max-w-xs text-base leading-relaxed">{introText}</p>
+        <div className="flex w-full max-w-xs flex-col items-center gap-7 py-4">
+          {giftText && <p className="font-sans text-ink text-lg leading-relaxed">{giftText}</p>}
+          <p className="text-ink-muted text-base leading-relaxed">{introText}</p>
           <button type="button" onClick={() => setStarted(true)} className="btn-gold h-12">
             {startLabel}
           </button>
@@ -373,7 +356,7 @@ export function BreathingExercise({
             </div>
           </div>
 
-          <button type="button" onClick={onFinish} className="btn-gold h-12">
+          <button type="button" onClick={() => onFinish(done)} className="btn-gold h-12">
             {done ? doneLabel : skipLabel}
           </button>
         </>

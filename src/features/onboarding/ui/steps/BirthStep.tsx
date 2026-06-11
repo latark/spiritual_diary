@@ -19,9 +19,7 @@ export function BirthStep({ onNext }: { onNext: (v: BirthValue) => void }) {
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="font-display text-ink text-2xl">Когда ты пришла в этот мир?</h2>
-        <p className="text-ink-muted mt-1 text-sm">
-          Время и место — по желанию (понадобятся для астрологии позже).
-        </p>
+        <p className="text-ink-muted mt-1 text-sm">Время и место — если захочешь.</p>
       </div>
 
       <div className="flex flex-col gap-4">

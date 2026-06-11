@@ -1,31 +1,30 @@
 'use client';
 
+import { Fireflies } from '@/shared/ui/Fireflies';
+
 export function CompletionStep({
   status,
   affirmation,
+  relief,
   onRetry,
   onReset,
 }: {
   status: 'saving' | 'saved' | 'error';
   affirmation: string | null;
+  relief: string | null;
   onRetry: () => void;
   onReset: () => void;
 }) {
   return (
     <div className="animate-fade-up flex flex-col items-center gap-7 pt-4 text-center">
-      <div className="relative flex size-28 items-center justify-center">
-        <span
-          className="animate-glow absolute inset-0 rounded-full"
-          style={{
-            background: 'radial-gradient(circle, var(--color-gold-soft) 0%, transparent 70%)',
-          }}
-        />
-        <span className="bg-gold shadow-glow size-3 rounded-full" />
+      <div className="relative h-28 w-full max-w-sm">
+        <Fireflies sizeScale={2} />
       </div>
 
       <div className="max-w-sm">
         <h2 className="font-display text-ink text-2xl">Свет принят</h2>
-        {affirmation && <p className="text-ink-muted mt-3 leading-relaxed">«{affirmation}»</p>}
+        {relief && <p className="text-ink mt-3 leading-relaxed">{relief}</p>}
+        {affirmation && <p className="text-ink-muted mt-2 leading-relaxed">«{affirmation}»</p>}
       </div>
 
       <div className="flex min-h-6 flex-col items-center gap-2">

@@ -9,7 +9,9 @@ import { createSupabaseServerClient } from '@/shared/api/supabase';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  // Только относительный внутренний путь — защита от open redirect (`//evil.com`).
+  const rawNext = searchParams.get('next') ?? '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   if (code) {
     const supabase = await createSupabaseServerClient();

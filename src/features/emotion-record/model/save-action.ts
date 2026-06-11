@@ -1,6 +1,9 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { createSupabaseServerClient } from '@/shared/api/supabase';
+import { classifyCrisis, recordCrisisFlag } from '@/shared/safety';
 
 import { emotionEntrySchema, type EmotionEntryInput } from './entry-schema';
 
@@ -21,6 +24,26 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
   }
 
   const d = parsed.data;
+
+  // Причина теперь выбирается из каталога (сфера + под-область) — не свободный текст,
+  // crisis-фильтр ей не нужен. Фоновая мысль ещё может быть своей → финальная сеть §6:
+  // триггернувший текст очищаем (в дневник не кладём), запись сохраняем, пишем флаг куратору.
+  const causeCustom = d.causeCustom.trim() || null;
+  let thoughtCustom = d.thoughtCustom.trim() || null;
+
+  if (thoughtCustom) {
+    const c = await classifyCrisis(thoughtCustom);
+    if (c.triggered) {
+      await recordCrisisFlag(supabase, user.id, c, 'record_thought');
+      thoughtCustom = null;
+    }
+  }
+
+  // Бэкдейтинг из «Памяти»: ставим created_at только для прошедшего момента (будущее игнорим —
+  // защита от прямого захода с битым параметром). Иначе — default now() самой БД.
+  const recordedAt =
+    d.recordedAt && new Date(d.recordedAt).getTime() <= Date.now() ? d.recordedAt : null;
+
   const { data, error } = await supabase
     .from('emotion_entries')
     .insert({
@@ -30,11 +53,13 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
       emotion_name: d.emotionName,
       emotion_color: d.emotionColor,
       intensity: d.intensity,
+      intensity_after: d.intensityAfter,
       cause_sphere: d.causeSphere,
-      cause_custom: d.causeCustom || null,
+      cause_custom: causeCustom,
       background_thought_id: d.thoughtId,
-      background_thought_custom: d.thoughtCustom || null,
+      background_thought_custom: thoughtCustom,
       body_zones: d.bodyZones,
+      ...(recordedAt ? { created_at: recordedAt } : {}),
     })
     .select('id')
     .single();
@@ -45,6 +70,11 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
 
   // Сайд-эффект: +1 точка света. Лучшее усилие — не валим сохранение, если не вышло.
   await supabase.rpc('add_light_point');
+
+  // Запись отражается на главной (витальность тела), в «Памяти» и на «Пути» — освежаем их кэш.
+  revalidatePath('/');
+  revalidatePath('/calendar');
+  revalidatePath('/progress');
 
   return { ok: true, id: data.id };
 }

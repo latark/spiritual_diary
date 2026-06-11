@@ -2,19 +2,7 @@
 
 import { useState } from 'react';
 
-import { cn } from '@/shared/lib/cn';
-
-/** Поэтичные подписи к уровням (без цифр). */
-const CAPTIONS = ['едва касается', 'тихо звучит', 'ощущается ясно', 'захватывает', 'переполняет'];
-
-/** Диаметры огоньков (растут слева направо). */
-const SIZES = [18, 25, 32, 40, 50];
-
-function buzz(ms = 6): void {
-  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-    navigator.vibrate(ms);
-  }
-}
+import { IntensityDots } from './IntensityDots';
 
 export function IntensityStep({
   color,
@@ -30,48 +18,11 @@ export function IntensityStep({
   return (
     <div className="animate-fade-up flex flex-col items-center gap-6">
       <div className="text-center">
-        <h2 className="font-display text-ink text-2xl">Насколько сильно?</h2>
-        <p className="text-ink-muted mt-1 text-sm">коснись, насколько это сейчас в тебе</p>
+        <h2 className="font-display text-ink text-2xl">Выбери силу эмоции</h2>
+        <p className="text-ink-muted mt-1 text-sm">насколько это сейчас в тебе?</p>
       </div>
 
-      <div className="flex h-20 items-end justify-center gap-3">
-        {SIZES.map((size, i) => {
-          const n = i + 1;
-          const lit = level !== null && n <= level;
-          const isTop = level === n;
-          return (
-            <button
-              key={n}
-              type="button"
-              aria-label={`Уровень ${n}`}
-              onClick={() => {
-                buzz();
-                setLevel(n);
-              }}
-              className="flex items-end"
-              style={{ height: SIZES[SIZES.length - 1], cursor: 'pointer' }}
-            >
-              <span
-                className={cn(
-                  'rounded-full transition-all duration-300',
-                  isTop && 'animate-breathe',
-                )}
-                style={{
-                  width: size,
-                  height: size,
-                  backgroundColor: color,
-                  opacity: lit ? 1 : 0.18,
-                  boxShadow: lit ? `0 0 ${8 + i * 4}px ${color}` : 'none',
-                }}
-              />
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="font-display text-ink min-h-[1.5rem] text-lg">
-        {level !== null ? CAPTIONS[level - 1] : ''}
-      </p>
+      <IntensityDots color={color} value={level} onChange={setLevel} />
 
       <div className="flex items-center gap-3">
         <button

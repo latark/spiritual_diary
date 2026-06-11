@@ -8,8 +8,36 @@ export type Database = {
   };
   public: {
     Tables: {
+      crisis_flags: {
+        Row: {
+          categories: string[];
+          created_at: string;
+          detected_by: string;
+          id: string;
+          source: string;
+          user_id: string;
+        };
+        Insert: {
+          categories: string[];
+          created_at?: string;
+          detected_by?: string;
+          id?: string;
+          source: string;
+          user_id: string;
+        };
+        Update: {
+          categories?: string[];
+          created_at?: string;
+          detected_by?: string;
+          id?: string;
+          source?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       emotion_entries: {
         Row: {
+          awareness: string | null;
           background_thought_custom: string | null;
           background_thought_id: number | null;
           body_zones: string[];
@@ -21,10 +49,12 @@ export type Database = {
           family_id: string;
           id: string;
           intensity: number;
+          intensity_after: number | null;
           shade_id: string;
           user_id: string;
         };
         Insert: {
+          awareness?: string | null;
           background_thought_custom?: string | null;
           background_thought_id?: number | null;
           body_zones?: string[];
@@ -36,10 +66,12 @@ export type Database = {
           family_id: string;
           id?: string;
           intensity: number;
+          intensity_after?: number | null;
           shade_id: string;
           user_id: string;
         };
         Update: {
+          awareness?: string | null;
           background_thought_custom?: string | null;
           background_thought_id?: number | null;
           body_zones?: string[];
@@ -51,6 +83,7 @@ export type Database = {
           family_id?: string;
           id?: string;
           intensity?: number;
+          intensity_after?: number | null;
           shade_id?: string;
           user_id?: string;
         };

@@ -1,13 +1,10 @@
 import { redirect } from 'next/navigation';
 
 import { OnboardingFlow } from '@/features/onboarding';
-import { createSupabaseServerClient } from '@/shared/api/supabase';
+import { getCurrentUser } from '@/shared/lib/auth';
 
 export default async function OnboardingPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }

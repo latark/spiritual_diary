@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 
-import { createSupabaseServerClient } from '@/shared/api/supabase';
+import { getCurrentUser, getProfile } from '@/shared/lib/auth';
 import { CosmosBackground } from '@/shared/ui/CosmosBackground';
 
 /**
@@ -10,19 +10,12 @@ import { CosmosBackground } from '@/shared/ui/CosmosBackground';
  * Не авторизован → на вход. Уже прошёл онбординг → на главную (защита от перезаписи).
  */
 export default async function OnboardingLayout({ children }: { children: ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', user.id)
-    .single();
+  const profile = await getProfile();
 
   // TODO(temp): в dev не выкидываем уже прошедших онбординг — чтобы можно было перетестить поток. Вернуть перед релизом.
   if (profile?.onboarding_completed && process.env.NODE_ENV !== 'development') {

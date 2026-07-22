@@ -1,22 +1,15 @@
 import Link from 'next/link';
 import { HelpCircle } from 'lucide-react';
 
-import { createSupabaseServerClient } from '@/shared/api/supabase';
 import { ROUTES } from '@/shared/config/navigation';
+import { getProfile } from '@/shared/lib/auth';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { signOutAction } from '@/features/auth';
 
 const sinceFormat = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
 
 export default async function ProfilePage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase.from('profiles').select('display_name, created_at').eq('id', user.id).single()
-    : { data: null };
+  const profile = await getProfile();
 
   const name = profile?.display_name ?? null;
   const since = profile?.created_at ? sinceFormat.format(new Date(profile.created_at)) : null;

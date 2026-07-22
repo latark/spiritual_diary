@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { STAGE_COUNT } from '@/entities/light-body';
 import { cn } from '@/shared/lib/cn';
+import { Hint } from '@/shared/ui/Hint';
 
 import { claimLightStageAction } from '../model/claim-stage-action';
 
@@ -100,7 +101,13 @@ export function LightBody({
   return (
     <div className="flex flex-col items-center">
       <div className="text-center">
-        <h2 className="font-display text-ink text-2xl">Твоё тело света</h2>
+        <h2 className="font-display text-ink text-2xl">
+          Твоё тело света
+          <Hint srLabel="О теле света">
+            Оно растёт из твоих записей: каждое прожитое чувство добавляет ему света. С днями
+            практики оно проходит фазы — от первой искры к сиянию.
+          </Hint>
+        </h2>
         <p className="text-ink-muted mt-0.5 text-sm">
           фаза {shownStage} <span className="text-ink-muted/50">из {STAGE_COUNT}</span>
         </p>

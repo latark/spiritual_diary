@@ -23,13 +23,25 @@ function parseTargetDate(raw?: string): Date | null {
   return d.getTime() < today.getTime() ? d : null;
 }
 
-export function RecordEmotionScreen({ targetDate }: { targetDate?: string }) {
+export function RecordEmotionScreen({
+  targetDate,
+  firstEver = false,
+}: {
+  targetDate?: string;
+  /** Самая первая запись пользователя — для приветственной строки на экране завершения. */
+  firstEver?: boolean;
+}) {
   const [chosen, setChosen] = useState<SelectedEmotion | null>(null);
   const [recordedFor] = useState(() => parseTargetDate(targetDate));
 
   if (chosen) {
     return (
-      <RecordSteps emotion={chosen} onReset={() => setChosen(null)} recordedFor={recordedFor} />
+      <RecordSteps
+        emotion={chosen}
+        onReset={() => setChosen(null)}
+        recordedFor={recordedFor}
+        firstEver={firstEver}
+      />
     );
   }
 

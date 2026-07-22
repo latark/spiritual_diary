@@ -15,9 +15,12 @@ export function OnboardingFlow() {
   const [error, setError] = useState<string>();
   const [crisis, setCrisis] = useState(false);
 
+  // Только навигация: на главную ведёт свежий серверный рендер (страница динамическая,
+  // читает cookies/профиль). router.refresh() здесь не нужен и вреден — в паре с replace
+  // даёт гонку, из-за которой переход застревает на /onboarding. Свежесть роутер-кеша
+  // обеспечивает revalidatePath в server action.
   function finish() {
     router.replace('/');
-    router.refresh();
   }
 
   async function submitIntention(intention: string) {

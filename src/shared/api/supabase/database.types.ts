@@ -179,6 +179,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      weekly_analyses: {
+        Row: {
+          content: Json | null;
+          cost_usd: number | null;
+          created_at: string;
+          entries_count: number;
+          id: string;
+          input_tokens: number | null;
+          model: string | null;
+          output_tokens: number | null;
+          period_end: string;
+          period_start: string;
+          prompt_version: string | null;
+          status: string;
+          user_id: string;
+        };
+        Insert: {
+          content?: Json | null;
+          cost_usd?: number | null;
+          created_at?: string;
+          entries_count?: number;
+          id?: string;
+          input_tokens?: number | null;
+          model?: string | null;
+          output_tokens?: number | null;
+          period_end: string;
+          period_start: string;
+          prompt_version?: string | null;
+          status: string;
+          user_id: string;
+        };
+        Update: {
+          content?: Json | null;
+          cost_usd?: number | null;
+          created_at?: string;
+          entries_count?: number;
+          id?: string;
+          input_tokens?: number | null;
+          model?: string | null;
+          output_tokens?: number | null;
+          period_end?: string;
+          period_start?: string;
+          prompt_version?: string | null;
+          status?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

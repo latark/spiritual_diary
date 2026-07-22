@@ -48,10 +48,16 @@ export async function saveEmotionEntryAction(input: EmotionEntryInput): Promise<
     }
   }
 
-  // Бэкдейтинг из «Памяти»: ставим created_at только для прошедшего момента (будущее игнорим —
-  // защита от прямого захода с битым параметром). Иначе — default now() самой БД.
+  // Бэкдейтинг из «Памяти»: created_at принимаем только в окне [now-90д, now]. Будущее и
+  // слишком далёкое прошлое (прямой заход с битым параметром → запись в 1970) отбрасываем —
+  // тогда БД ставит default now(). 90 дней покрывают разумную ретроспективу «Памяти».
+  const BACKDATE_LIMIT_MS = 90 * 86_400_000;
+  const recordedTime = d.recordedAt ? new Date(d.recordedAt).getTime() : null;
+  const now = Date.now();
   const recordedAt =
-    d.recordedAt && new Date(d.recordedAt).getTime() <= Date.now() ? d.recordedAt : null;
+    recordedTime !== null && recordedTime <= now && recordedTime >= now - BACKDATE_LIMIT_MS
+      ? d.recordedAt
+      : null;
 
   const { data, error } = await supabase
     .from('emotion_entries')

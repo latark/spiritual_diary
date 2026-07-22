@@ -26,5 +26,10 @@ export function dayNumber(isoDate: string): number {
   const year = Number(parts[0]);
   const month = Number(parts[1]);
   const day = Number(parts[2]);
+  // Битый вход дал бы NaN → Date.UTC(NaN) = NaN, и весь детерминизм ротаций/витальности молча
+  // ломается (NaN % N = NaN). Лучше явно упасть, чем тихо отдавать мусор.
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    throw new Error(`dayNumber: некорректная дата '${isoDate}'`);
+  }
   return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
 }

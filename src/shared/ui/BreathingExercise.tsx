@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { rgba } from '@/shared/lib/rgba';
+
 /**
  * Дыхательная практика — общий компонент для онбординга и записи эмоции.
  * Ритм: бокс-дыхание 4-4-4-4 (вдох · задержка · выдох · задержка), по умолчанию 4 цикла.
@@ -36,10 +38,6 @@ const THORN_EDGE = '#e8e2f8';
 const easeInOut = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const rgba = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
-};
 
 interface Mote {
   angle: number;

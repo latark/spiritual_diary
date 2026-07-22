@@ -1,24 +1,16 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
-import { createSupabaseServerClient } from '@/shared/api/supabase';
+import { getCurrentUser, getProfile } from '@/shared/lib/auth';
 import { AppShell } from '@/widgets/app-shell';
 
 export default async function MainLayout({ children }: { children: ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.onboarding_completed) {
     redirect('/onboarding');
   }

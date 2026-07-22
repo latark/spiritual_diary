@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import { rgba } from '@/shared/lib/rgba';
+
 /**
  * Космический фон онбординга: фото галактики (/public/cosmos.jpg) по центру у верхнего края
  * (без обрезки сверху); эллиптическая маска с длинным градиентом уводит края в прозрачность.
@@ -11,11 +13,6 @@ import { useEffect, useRef } from 'react';
 
 const STAR_COLORS = ['#ffffff', '#e7cf7a', '#cdbdf0', '#b8c4e8'];
 const CANVAS_BG = '#0f0b1f';
-
-const rgba = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
-};
 
 interface Star {
   x: number;

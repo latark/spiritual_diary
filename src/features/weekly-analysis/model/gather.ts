@@ -1,7 +1,4 @@
-import 'server-only';
-
-import { causeLabel, thoughtLabel } from '@/entities/emotion-entry';
-import { getEntriesSince } from '@/entities/emotion-entry/server';
+import { causeLabel, thoughtLabel, type EmotionEntry } from '@/entities/emotion-entry';
 import { EMOTION_FAMILIES } from '@/shared/content/emotions';
 import { familyValence } from '@/shared/content/valence';
 
@@ -17,13 +14,11 @@ function tally(map: Record<string, number>, key: string | null): void {
 }
 
 /**
- * Обезличенная сводка недели для ИИ. Берём записи за `days` суток текущего пользователя и
- * сворачиваем в структуру: имени/локаций нет (§7), свободный текст (ситуация/мысль/осознание)
- * включаем (MVP «как есть»). Порог low-data проверяет вызывающий по entriesCount.
+ * Записи недели → обезличенная сводка для ИИ. Чистое преобразование (без БД): имени/локаций
+ * нет (§7), свободный текст (ситуация/мысль/осознание) включаем (MVP «как есть»). Сбор записей
+ * (auth- или service-клиентом) делает вызывающий; порог low-data проверяется по entriesCount.
  */
-export async function gatherWeek(days = 7): Promise<WeeklySummary> {
-  const entries = await getEntriesSince(days);
-
+export function summarize(entries: EmotionEntry[], days = 7): WeeklySummary {
   const familyCounts: Record<string, number> = {};
   const causeCounts: Record<string, number> = {};
 

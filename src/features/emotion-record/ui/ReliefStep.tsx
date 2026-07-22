@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { Hint } from '@/shared/ui/Hint';
+
 import { IntensityDots } from './IntensityDots';
 import type { Valence } from '../model/valence';
 
@@ -26,8 +28,12 @@ export function ReliefStep({
   return (
     <div className="animate-fade-up flex flex-col items-center gap-6">
       <div className="text-center">
-        <h2 className="font-display text-ink text-2xl">
+        <h2 className="font-display text-ink inline-flex items-center text-2xl">
           {isPositive ? 'Сколько света сейчас?' : 'Прислушайся — как это сейчас?'}
+          <Hint srLabel="О переоценке силы">
+            Та же шкала, что в начале, но уже после дыхания. Не нужно снижать любой ценой — просто
+            отметь, как чувство звучит сейчас. Иногда оно остаётся, и это тоже честно.
+          </Hint>
         </h2>
         <p className="text-ink-muted mt-1 text-sm">то же чувство, после дыхания</p>
       </div>

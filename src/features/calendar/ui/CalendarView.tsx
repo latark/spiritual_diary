@@ -14,6 +14,7 @@ import { ROUTES } from '@/shared/config/navigation';
 import { familyValence } from '@/shared/content/valence';
 import { aggregateVibration, VIBE_LEVELS, VIBE_META } from '@/shared/content/vibration';
 import { cn } from '@/shared/lib/cn';
+import { IntensityMeter } from '@/shared/ui/IntensityMeter';
 
 const entryVibeItems = (entries: EmotionEntry[]) =>
   entries.map((e) => ({ familyId: e.familyId, intensity: e.intensity }));
@@ -110,21 +111,13 @@ function DayEntryRow({
           }}
         />
         <span className="text-ink text-base">{entry.emotionName}</span>
-        <span
-          className="ml-auto flex items-center gap-1"
-          aria-label={`сила ${entry.intensity} из 5`}
-        >
-          {[1, 2, 3, 4, 5].map((n) => (
-            <span
-              key={n}
-              className="size-3 rounded-full"
-              style={{
-                backgroundColor: entry.emotionColor,
-                opacity: n <= entry.intensity ? 0.9 : 0.16,
-              }}
-            />
-          ))}
-        </span>
+        <IntensityMeter
+          level={entry.intensity}
+          color={entry.emotionColor}
+          size="md"
+          glow={false}
+          className="ml-auto"
+        />
       </button>
 
       {/* Раскрытие — плавное «дыхание» высоты (grid-rows 0fr→1fr), не мгновенный скачок.

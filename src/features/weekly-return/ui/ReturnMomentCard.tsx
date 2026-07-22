@@ -4,52 +4,12 @@ import { useState } from 'react';
 
 import { ReflectionOverlay, causeLabel, thoughtLabel } from '@/entities/emotion-entry';
 import { cn } from '@/shared/lib/cn';
+import { EmotionDot } from '@/shared/ui/EmotionDot';
+import { IntensityMeter } from '@/shared/ui/IntensityMeter';
 
+import { MetaLine } from './MetaLine';
 import { recalledWhen } from '../model/recalled-when';
 import type { ReturnMoment } from '../model/types';
-
-function MetaLine({ lead, children }: { lead: string; children: React.ReactNode }) {
-  return (
-    <p className="text-ink-muted text-sm leading-relaxed">
-      <span className="text-ink-muted/45">{lead} </span>
-      {children}
-    </p>
-  );
-}
-
-function EmotionDot({ color, positive }: { color: string; positive: boolean }) {
-  return (
-    <span
-      className="inline-block size-3.5 shrink-0 rounded-full"
-      style={{
-        backgroundColor: color,
-        // светлячок (позитив) — тёплое свечение; колючка (негатив) — матовая точка с тёмным ядром.
-        boxShadow: positive ? `0 0 12px -1px ${color}` : 'inset 0 0 0 2px rgba(15, 11, 31, 0.45)',
-      }}
-    />
-  );
-}
-
-function IntensityDots({ level, color }: { level: number; color: string }) {
-  return (
-    <span className="flex items-center gap-1" aria-label={`сила ${level} из 5`}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const lit = n <= level;
-        return (
-          <span
-            key={n}
-            className="size-1.5 rounded-full transition-opacity duration-300"
-            style={{
-              backgroundColor: color,
-              opacity: lit ? 1 : 0.16,
-              boxShadow: lit ? `0 0 6px -1px ${color}` : 'none',
-            }}
-          />
-        );
-      })}
-    </span>
-  );
-}
 
 export function ReturnMomentCard({ moment }: { moment: ReturnMoment }) {
   const positive = moment.valence === 'positive';
@@ -68,7 +28,7 @@ export function ReturnMomentCard({ moment }: { moment: ReturnMoment }) {
       </div>
 
       <div className="mt-2.5">
-        <IntensityDots level={moment.intensity} color={moment.emotionColor} />
+        <IntensityMeter level={moment.intensity} color={moment.emotionColor} />
       </div>
 
       {(cause || thought) && (

@@ -49,3 +49,18 @@ export interface WeeklySummary {
   causeCounts: Record<string, number>; // сфера → сколько раз
   entries: WeeklyEntrySummary[];
 }
+
+/** Последнее послание пользователя — для показа в «Пути» (client-safe). */
+export interface LatestWeekly {
+  status: string; // ready | skipped_low_data | safe_fallback | error
+  message: WeeklyMessage | null; // распарсенное послание (только при status ready)
+  createdAt: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+/** Итог прогона генерации для одного пользователя (кнопка и cron). */
+export type WeeklyResult =
+  | { ok: true; status: 'ready'; message: WeeklyMessage }
+  | { ok: true; status: 'skipped_low_data' | 'safe_fallback' }
+  | { error: string };

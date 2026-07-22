@@ -3,21 +3,14 @@
 import { useState } from 'react';
 
 import { causeLabel, thoughtLabel } from '@/entities/emotion-entry';
+import { EmotionDot } from '@/shared/ui/EmotionDot';
 
+import { MetaLine } from './MetaLine';
 import { recalledWhen } from '../model/recalled-when';
 import type { ReturnMoment } from '../model/types';
 
 /** Сколько осознаний показываем сразу; «показать ещё» открывает столько же. */
 const PAGE = 4;
-
-function MetaLine({ lead, children }: { lead: string; children: React.ReactNode }) {
-  return (
-    <p className="text-ink-muted text-sm leading-relaxed">
-      <span className="text-ink-muted/45">{lead} </span>
-      {children}
-    </p>
-  );
-}
 
 function InsightCard({ moment }: { moment: ReturnMoment }) {
   const positive = moment.valence === 'positive';
@@ -26,15 +19,7 @@ function InsightCard({ moment }: { moment: ReturnMoment }) {
   return (
     <div className="bg-surface-raised animate-fade-up rounded-xl p-4">
       <div className="flex items-center gap-2.5">
-        <span
-          className="inline-block size-3 shrink-0 rounded-full"
-          style={{
-            backgroundColor: moment.emotionColor,
-            boxShadow: positive
-              ? `0 0 12px -1px ${moment.emotionColor}`
-              : 'inset 0 0 0 2px rgba(15, 11, 31, 0.45)',
-          }}
-        />
+        <EmotionDot color={moment.emotionColor} positive={positive} size="sm" />
         <span className="font-display text-ink text-base">{moment.emotionName}</span>
         <span className="text-ink-muted/70 ml-auto text-xs">{recalledWhen(moment.createdAt)}</span>
       </div>

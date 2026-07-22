@@ -7,6 +7,7 @@ export function CompletionStep({
   affirmation,
   relief,
   hint,
+  firstRecord = false,
   onRetry,
   onReset,
 }: {
@@ -15,6 +16,8 @@ export function CompletionStep({
   relief: string | null;
   /** Мягкий вопрос-зерно: на днях к нему можно вернуться на «Пути». */
   hint?: string | null;
+  /** Самая первая запись: один раз объясняем, что произошло и где это искать. */
+  firstRecord?: boolean;
   onRetry: () => void;
   onReset: () => void;
 }) {
@@ -29,6 +32,17 @@ export function CompletionStep({
         {relief && <p className="text-ink mt-3 leading-relaxed">{relief}</p>}
         {affirmation && <p className="text-ink-muted mt-2 leading-relaxed">«{affirmation}»</p>}
       </div>
+
+      {firstRecord && (
+        <div className="bg-surface/50 max-w-sm rounded-2xl px-5 py-4">
+          <p className="text-ink leading-relaxed">
+            Это чувство — первая искра твоего тела света. С каждой записью оно будет расти.
+          </p>
+          <p className="text-ink-muted mt-2 text-sm leading-relaxed">
+            А в «Памяти» эта запись тебя дождётся — к ней всегда можно вернуться.
+          </p>
+        </div>
+      )}
 
       {hint && (
         <div className="border-line/40 max-w-sm border-t pt-5">

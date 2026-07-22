@@ -3,6 +3,11 @@ import 'server-only';
 import { createSupabaseServerClient } from '@/shared/api/supabase';
 import type { ChakraId, EnergyEntry } from '@/shared/content/chakras';
 import { familyValence } from '@/shared/content/valence';
+import { getCurrentUser } from '@/shared/lib/auth';
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type { Database } from '@/shared/api/supabase/database.types';
 
 import { rowToEntry } from '../lib/row-to-entry';
 import type { EmotionEntry } from '../model/types';
@@ -14,11 +19,9 @@ const DAY_MS = 86_400_000;
 
 /** Записи за календарный месяц (локальные границы) — для «Памяти». */
 export async function getMonthEntries(year: number, month: number): Promise<EmotionEntry[]> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
+  const supabase = await createSupabaseServerClient();
 
   // Границы в UTC (не в таймзоне сервера) + паддинг ±1 день: created_at хранится в UTC, а
   // группировка на клиенте — по его локальному дню. Запись у границы месяца (поздний вечер /
@@ -44,11 +47,9 @@ export async function getMonthEntries(year: number, month: number): Promise<Emot
  * сортировку (по 3 за раз) делает selectReturnMoments.
  */
 export async function getReturnCandidates(): Promise<EmotionEntry[]> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
+  const supabase = await createSupabaseServerClient();
 
   const now = Date.now();
   const from = new Date(now - 14 * DAY_MS).toISOString();
@@ -72,11 +73,9 @@ export async function getReturnCandidates(): Promise<EmotionEntry[]> {
  * Валентность — из семьи эмоции. Вся история (механика энергий копит влияние от baseline).
  */
 export async function getEnergyEntries(): Promise<EnergyEntry[]> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
+  const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase
     .from('emotion_entries')
@@ -97,18 +96,16 @@ export async function getEnergyEntries(): Promise<EnergyEntry[]> {
  * Записи за последние `days` суток — вход еженедельного анализа. Текущий пользователь; для
  * планового прогона (cron по всем пользователям) понадобится service-role-вариант.
  */
-export async function getEntriesSince(days: number): Promise<EmotionEntry[]> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
+export async function getEntriesSinceWith(
+  client: SupabaseClient<Database>,
+  userId: string,
+  days: number,
+): Promise<EmotionEntry[]> {
   const from = new Date(Date.now() - days * DAY_MS).toISOString();
-  const { data } = await supabase
+  const { data } = await client
     .from('emotion_entries')
     .select(SELECT)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .gte('created_at', from)
     .order('created_at', { ascending: true });
 
@@ -117,11 +114,9 @@ export async function getEntriesSince(days: number): Promise<EmotionEntry[]> {
 
 /** Осмысленные записи (с осознанием) — лента «Твой свет» на «Пути», свежие сверху. */
 export async function getInsightTrail(limit: number): Promise<EmotionEntry[]> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
+  const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase
     .from('emotion_entries')

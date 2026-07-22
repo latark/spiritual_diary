@@ -73,11 +73,14 @@ export function RecordSteps({
   emotion,
   onReset,
   recordedFor,
+  firstEver = false,
 }: {
   emotion: RecordEmotion;
   onReset: () => void;
   /** Бэкдейтинг из «Памяти»: день, за который пишем запись. null/undefined — обычная запись «сейчас». */
   recordedFor?: Date | null;
+  /** Самая первая запись пользователя — приветственная строка на экране завершения (один раз). */
+  firstEver?: boolean;
 }) {
   const valence = familyValence(emotion.familyId);
 
@@ -85,6 +88,10 @@ export function RecordSteps({
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [crisis, setCrisis] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Приветственную строку показываем только на самом первом завершении за сеанс: если в этом
+  // же заходе записать второе чувство (resetAll не перезагружает страницу), она уже не нужна.
+  const [firstCeremony, setFirstCeremony] = useState(false);
+  const usedFirstCeremony = useRef(false);
   // Последний собранный input — чтобы «Повторить» сохраняло ровно его, а не пересобирало
   // из draft (setDraft асинхронен).
   const lastInput = useRef<EmotionEntryInput | null>(null);
@@ -142,7 +149,11 @@ export function RecordSteps({
 
   function runSave(input: EmotionEntryInput): void {
     setSaveStatus('saving');
-    void saveEmotionEntryAction(input).then((r) => setSaveStatus('ok' in r ? 'saved' : 'error'));
+    saveEmotionEntryAction(input)
+      .then((r) => setSaveStatus('ok' in r ? 'saved' : 'error'))
+      // Без catch отклонённый промис (упал cookies/таймаут) навсегда оставил бы экран на
+      // «сохраняю запись…» без кнопки «Повторить» — запись была бы потеряна молча.
+      .catch(() => setSaveStatus('error'));
   }
 
   // Завершение «петли облегчения»: фиксируем переоценку (или её отсутствие) и сохраняем.
@@ -151,6 +162,8 @@ export function RecordSteps({
     const input = buildInput(intensityAfter);
     lastInput.current = input;
     setDraft((d) => ({ ...d, intensityAfter }));
+    setFirstCeremony(firstEver && !usedFirstCeremony.current);
+    usedFirstCeremony.current = true;
     runSave(input);
     setStep('done');
   }
@@ -266,6 +279,7 @@ export function RecordSteps({
           affirmation={affirmation}
           relief={relief}
           hint={hint}
+          firstRecord={firstCeremony}
           onRetry={() => lastInput.current && runSave(lastInput.current)}
           onReset={resetAll}
         />

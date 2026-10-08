@@ -10,12 +10,11 @@ Create detailed, executable implementation plan.
 
 ## MCP for Planning
 
-- **Serena** — find_symbol, get_symbols_overview to understand current code
+- **LSP** — workspaceSymbol, documentSymbol, findReferences to understand current code
 - **Supabase** — check schema, RLS policies if DB involved via mcp
 - **Upstash** — check Redis keys, rate limits if caching involved via mcp
 - **Shadcn** — check available components before planning UI
 - **Context7** — fetch docs for unfamiliar library APIs
-- **Sequential Thinking** — complex architectural decisions
 
 > If needed MCP is not available, check `.mcp.json` — suggest user to enable it.
 

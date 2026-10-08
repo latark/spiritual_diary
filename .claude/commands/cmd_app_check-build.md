@@ -23,7 +23,7 @@ For each error:
 □ Suggested fix
 ```
 
-Use **Serena** to navigate to symbols if fix is non-trivial.
+Use **LSP** (goToDefinition, findReferences) to navigate to symbols if fix is non-trivial.
 
 ## Common Fixes
 

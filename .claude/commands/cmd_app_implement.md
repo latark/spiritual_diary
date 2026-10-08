@@ -16,7 +16,7 @@ Load plan from `.claude/local/backlog/` and execute step by step.
 
 ## MCP for Implementation
 
-- **Serena** — replace_symbol_body, insert_after_symbol for precise edits
+- **LSP** — findReferences before changing a signature; type errors are reported after each edit
 - **Supabase** — apply_migration, execute_sql for DB changes via mcp
 - **Upstash** — manage Redis keys if caching involved via mcp
 - **Shadcn** — get_add_command_for_items to install components
